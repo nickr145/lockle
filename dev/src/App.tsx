@@ -1,56 +1,79 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import GameCanvas from "./components/GameCanvas";
 import { parseLevel } from "./game/state";
-import { rotateState } from "./game/rotate";
-import { applyGravity } from "./game/gravity";
 import { stepGame } from "./game/engine";
+import { drawGame } from "./render/drawGame";
+import type { GameState, Rotation } from "./game/types";
+
+const TILE = 80;
+
+const LEVEL = [
+  "#######",
+  "#..S..#",
+  "#..#..#",
+  "#..o..#",
+  "#..#E.#",
+  "#######",
+];
 
 export default function App() {
-  const LEVEL = [
-    "#######",
-    "#..S..#",
-    "#..#..#",
-    "#..o..#",
-    "#..#E.#",
-    "#######",
-  ];
-  const draw = useCallback((ctx: CanvasRenderingContext2D) => {
-    ctx.clearRect(0, 0, 400, 400);
-    ctx.font = "20px sans-serif";
-    ctx.fillText("Phase 1: Engine not wired yet", 40, 200);
-  }, []);
+  const [state, setState] = useState<GameState>(() => parseLevel(LEVEL));
+
+  // Canvas size derived from grid
+  const width = state.grid[0].length * TILE;
+  const height = state.grid.length * TILE;
+
+  // Renderer
+  const draw = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      drawGame(ctx, state);
+    },
+    [state],
+  );
 
   useEffect(() => {
-    // const handler = (e: KeyboardEvent) => {
-    //   if (e.key === "ArrowLeft") {
-    //     console.log("Rotate left");
-    //   }
-    //   if (e.key === "ArrowRight") {
-    //     console.log("Rotate right");
-    //   }
-    // };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat) return; // prevents holding key spam
+      if (state.status !== "playing") return;
 
-    // window.addEventListener("keydown", handler);
-    // return () => window.removeEventListener("keydown", handler);
-    const state = parseLevel(LEVEL);
+      let rot: Rotation | null = null;
 
-    console.log("Initial:");
-    console.table(state.grid);
-    console.log("Ball:", state.ball);
+      if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") rot = "CCW";
+      if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") rot = "CW";
 
-    stepGame(state, "CW");
+      if (!rot) return;
 
-    console.log("After step:");
-    console.table(state.grid);
-    console.log("Ball:", state.ball);
-    console.log("Moves:", state.movesUsed);
-    console.log("Status:", state.status);
-  }, []);
+      e.preventDefault();
+
+      // use functional setState so we always get latest state
+      setState((prev) => {
+        const copy = structuredClone(prev);
+        stepGame(copy, rot!);
+        return copy;
+      });
+    };
+
+    window.addEventListener("keydown", onKeyDown, { passive: false });
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [state.status]);
 
   return (
-    <div style={{ padding: 20 }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 20,
+      }}
+    >
       <h1>Lockle</h1>
-      <GameCanvas draw={draw} />
+      <GameCanvas draw={draw} width={width} height={height} />
+      <div style={{ marginTop: 12, opacity: 0.8, fontSize: 14 }}>
+        {" "}
+        Rotate: ←/A and →/D{" "}
+      </div>
     </div>
   );
 }
