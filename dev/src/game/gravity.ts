@@ -31,7 +31,7 @@ export function applyGravity(state: GameState, dir: Direction): void {
     }
 
     // Exit condition (exit unlocking comes later)
-    if (cell === "E") {
+    if (cell === "E" && state.switchesHit.size > 0) {
       state.status = "won";
       break;
     }

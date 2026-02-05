@@ -23,6 +23,7 @@ export type GameState = {
   grid: Grid;
   ball: Position;
   switchesHit: Set<string>;
+  totalSwitches: number;
   movesUsed: number;
   moveLimit: number;
   status: GameStatus;

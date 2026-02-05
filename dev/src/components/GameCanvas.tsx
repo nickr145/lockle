@@ -2,9 +2,11 @@ import { useEffect, useRef } from "react";
 
 type GameCanvasProps = {
   draw: (ctx: CanvasRenderingContext2D) => void;
+  width: number;
+  height: number;
 };
 
-export default function GameCanvas({ draw }: GameCanvasProps) {
+export default function GameCanvas({ draw, width, height }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -20,8 +22,8 @@ export default function GameCanvas({ draw }: GameCanvasProps) {
   return (
     <canvas
       ref={canvasRef}
-      width={400}
-      height={400}
+      width={width}
+      height={height}
       style={{ border: "1px solid black" }}
     />
   );
