@@ -11,7 +11,9 @@ const LEVEL = getDailyLevel();
 
 export default function App() {
   const statusRef = useRef<GameState["status"]>("playing");
-  const [state, setState] = useState<GameState>(() => parseLevel(LEVEL));
+  const [state, setState] = useState<GameState>(() =>
+    parseLevel(LEVEL.layout, LEVEL.optimalMoves),
+  );
   useEffect(() => {
     statusRef.current = state.status;
   }, [state.status]);
@@ -46,7 +48,7 @@ export default function App() {
     setRotationDeg(0);
     setIsAnimating(false);
     setMessage("");
-    setState(parseLevel(LEVEL));
+    setState(parseLevel(LEVEL.layout, LEVEL.optimalMoves));
   }
 
   function triggerRotate(rot: Rotation) {
@@ -76,9 +78,9 @@ export default function App() {
 
         stepGame(copy, rot);
 
-        if (copy.switchesHit.size > before) {
-          setMessage("Switch activated!");
-        }
+        // if (copy.switchesHit.size > before) {
+        //   setMessage("Switch activated!");
+        // }
 
         if (
           copy.switchesHit.size === copy.totalSwitches &&
@@ -88,7 +90,7 @@ export default function App() {
         }
 
         if (copy.status === "won") setMessage("You escaped!");
-        if (copy.status === "lost") setMessage("Out of moves!");
+        // if (copy.status === "lost") setMessage("Out of moves!");
 
         return copy;
       });
@@ -153,7 +155,9 @@ export default function App() {
       )}
 
       <div style={{ fontSize: 14, opacity: 0.8 }}>
-        Moves: {state.movesUsed} / {state.moveLimit}
+        {state.status === "won"
+          ? `Solved in ${state.movesUsed} moves. Optimal: ${state.optimalMoves} moves.`
+          : "Moves made: " + state.movesUsed}
       </div>
 
       <button onClick={resetGame}>Reset</button>

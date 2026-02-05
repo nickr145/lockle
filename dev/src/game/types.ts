@@ -24,7 +24,7 @@ export type Direction = "up" | "down" | "left" | "right";
 
 export type Rotation = "CW" | "CCW";
 
-export type GameStatus = "playing" | "won" | "lost";
+export type GameStatus = "playing" | "won"; // | "lost";
 
 export type GameState = {
   grid: Grid;
@@ -33,6 +33,6 @@ export type GameState = {
   switchesHit: Set<number>;
   totalSwitches: number;
   movesUsed: number;
-  moveLimit: number;
+  optimalMoves: number;
   status: GameStatus;
 };

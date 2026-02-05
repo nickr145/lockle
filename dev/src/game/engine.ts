@@ -20,8 +20,8 @@ export function stepGame(state: GameState, rotation: Rotation): void {
   // (Later this will map to rotation-aware gravity)
   applyGravity(state, "down");
 
-  // 3. Final move limit enforcement
-  if (state.movesUsed >= state.moveLimit && state.status === "playing") {
-    state.status = "lost";
-  }
+//   // 3. Final move limit enforcement
+//   if (state.movesUsed >= state.moveLimit && state.status === "playing") {
+//     state.status = "lost";
+//   }
 }

@@ -2,7 +2,7 @@
 
 import type { Cell, GameState, Grid, Position, Switch } from "./types";
 
-export function parseLevel(level: string[]): GameState {
+export function parseLevel(level: string[], optimalMoves: number): GameState {
   const grid: Grid = [];
   let ball: Position | null = null;
 
@@ -42,7 +42,7 @@ export function parseLevel(level: string[]): GameState {
     switchesHit: new Set<number>(),
     totalSwitches,
     movesUsed: 0,
-    moveLimit: 8,
+    optimalMoves,
     status: "playing",
   };
 }
