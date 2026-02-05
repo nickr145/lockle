@@ -18,9 +18,12 @@ const LEVEL = [
 
 export default function App() {
   const [state, setState] = useState<GameState>(() => parseLevel(LEVEL));
+  useEffect(() => { statusRef.current = state.status; }, [state.status]);
+
   const [isAnimating, setIsAnimating] = useState(false);
   const [rotationDeg, setRotationDeg] = useState(0);
   const [message, setMessage] = useState("");
+  const statusRef = useRef<GameState["status"]>("playing");
 
   // hard locks
   const animatingRef = useRef(false);
@@ -33,13 +36,14 @@ export default function App() {
     (ctx: CanvasRenderingContext2D) => {
       drawGame(ctx, state);
     },
-    [state]
+    [state],
   );
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
       if (animatingRef.current) return;
+      if (statusRef.current !== "playing") return;
 
       let rot: Rotation | null = null;
       let deg = 0;
@@ -94,7 +98,7 @@ export default function App() {
           if (copy.status === "won") {
             setMessage("🎉 You escaped!");
           }
-          
+
           if (copy.status === "lost") {
             setMessage("Move limit reached! You lost.");
           }
