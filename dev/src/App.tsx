@@ -18,6 +18,8 @@ const LEVEL = [
 
 export default function App() {
   const [state, setState] = useState<GameState>(() => parseLevel(LEVEL));
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [rotationDeg, setRotationDeg] = useState(0);
 
   // Canvas size derived from grid
   const width = state.grid[0].length * TILE;
@@ -33,29 +35,46 @@ export default function App() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.repeat) return; // prevents holding key spam
-      if (state.status !== "playing") return;
+      if (e.repeat) return;
+      if (isAnimating) return;
 
       let rot: Rotation | null = null;
+      let deg = 0;
 
-      if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") rot = "CCW";
-      if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") rot = "CW";
+      if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") {
+        rot = "CW";
+        deg = 90;
+      }
+
+      if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") {
+        rot = "CCW";
+        deg = -90;
+      }
 
       if (!rot) return;
 
       e.preventDefault();
+      setIsAnimating(true);
+      setRotationDeg(deg);
 
-      // use functional setState so we always get latest state
-      setState((prev) => {
-        const copy = structuredClone(prev);
-        stepGame(copy, rot!);
-        return copy;
-      });
+      setTimeout(() => {
+        setRotationDeg(0);
+
+        setState((prev) => {
+          if (prev.status !== "playing") return prev;
+
+          const copy = structuredClone(prev);
+          stepGame(copy, rot!);
+          return copy;
+        });
+
+        setIsAnimating(false);
+      }, 200);
     };
 
     window.addEventListener("keydown", onKeyDown, { passive: false });
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [state.status]);
+  }, [isAnimating]);
 
   return (
     <div
@@ -69,10 +88,23 @@ export default function App() {
       }}
     >
       <h1>Lockle</h1>
-      <GameCanvas draw={draw} width={width} height={height} />
+
+      <div
+        style={{
+          transformOrigin: "center center",
+          transform: `rotate(${rotationDeg}deg)`,
+          transition: isAnimating ? "transform 200ms ease-in-out" : "none",
+        }}
+      >
+        <GameCanvas draw={draw} width={width} height={height} />
+      </div>
+
+      {isAnimating && (
+        <div style={{ marginTop: 8, opacity: 0.6 }}>Rotating…</div>
+      )}
+
       <div style={{ marginTop: 12, opacity: 0.8, fontSize: 14 }}>
-        {" "}
-        Rotate: ←/A and →/D{" "}
+        Rotate: ←/A and →/D
       </div>
     </div>
   );
