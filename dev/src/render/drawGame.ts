@@ -25,18 +25,29 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: GameState) {
         ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
       }
 
-      if (cell === "S") {
-        ctx.fillStyle = "#f59e0b"; // amber
-        ctx.beginPath();
-        ctx.arc(x * TILE + TILE / 2, y * TILE + TILE / 2, 10, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      //   if (cell === "S") {
+      //     ctx.fillStyle = "#f59e0b"; // amber
+      //     ctx.beginPath();
+      //     ctx.arc(x * TILE + TILE / 2, y * TILE + TILE / 2, 10, 0, Math.PI * 2);
+      //     ctx.fill();
+      //   }
 
       if (cell === "E") {
         ctx.fillStyle = "#10b981"; // green
         ctx.fillRect(x * TILE + 12, y * TILE + 12, TILE - 24, TILE - 24);
       }
     }
+  }
+
+  // switches
+  for (const sw of state.switches) {
+    ctx.fillStyle = state.switchesHit.has(sw.id)
+      ? "#34d399" // activated (green)
+      : "#f59e0b"; // inactive (amber)
+
+    ctx.beginPath();
+    ctx.arc(sw.x * TILE + TILE / 2, sw.y * TILE + TILE / 2, 10, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // ball

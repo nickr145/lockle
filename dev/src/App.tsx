@@ -4,17 +4,10 @@ import { parseLevel } from "./game/state";
 import { stepGame } from "./game/engine";
 import { drawGame } from "./render/drawGame";
 import type { GameState, Rotation } from "./game/types";
+import { getDailyLevel } from "./game/daily";
 
 const TILE = 80;
-
-const LEVEL = [
-  "#######",
-  "#..S..#",
-  "#..#..#",
-  "#..o..#",
-  "#..#E.#",
-  "#######",
-];
+const LEVEL = getDailyLevel();
 
 export default function App() {
   const statusRef = useRef<GameState["status"]>("playing");
@@ -94,8 +87,8 @@ export default function App() {
           setMessage("All switches activated — exit unlocked!");
         }
 
-        if (copy.status === "won") setMessage("🎉 You escaped!");
-        if (copy.status === "lost") setMessage("❌ Out of moves!");
+        if (copy.status === "won") setMessage("You escaped!");
+        if (copy.status === "lost") setMessage("Out of moves!");
 
         return copy;
       });
@@ -137,6 +130,7 @@ export default function App() {
       }}
     >
       <h1>Lockle</h1>
+      <div style={{ opacity: 0.6, fontSize: 12 }}>Daily Puzzle</div>
 
       <div
         style={{
