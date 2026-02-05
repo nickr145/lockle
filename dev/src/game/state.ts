@@ -2,6 +2,8 @@
 
 import type { Cell, GameState, Grid, Position } from "./types";
 
+let totalSwitches = 0;
+
 export function parseLevel(level: string[]): GameState {
   const grid: Grid = [];
   let ball: Position | null = null;
@@ -15,7 +17,10 @@ export function parseLevel(level: string[]): GameState {
       if (ch === "o") {
         ball = { x, y };
         row.push(".");
-      } else if (ch === "#" || ch === "." || ch === "S" || ch === "E") {
+      } else if (ch === "S") {
+        totalSwitches++;
+        row.push("S");
+      } else if (ch === "#" || ch === "." || ch === "E") {
         row.push(ch);
       } else {
         throw new Error(`Invalid character '${ch}' at (${x}, ${y})`);
@@ -33,6 +38,7 @@ export function parseLevel(level: string[]): GameState {
     grid,
     ball,
     switchesHit: new Set(),
+    totalSwitches,
     movesUsed: 0,
     moveLimit: 8,
     status: "playing",

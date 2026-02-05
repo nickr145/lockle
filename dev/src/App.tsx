@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import GameCanvas from "./components/GameCanvas";
 import { parseLevel } from "./game/state";
 import { stepGame } from "./game/engine";
@@ -20,23 +20,26 @@ export default function App() {
   const [state, setState] = useState<GameState>(() => parseLevel(LEVEL));
   const [isAnimating, setIsAnimating] = useState(false);
   const [rotationDeg, setRotationDeg] = useState(0);
+  const [message, setMessage] = useState("");
 
-  // Canvas size derived from grid
+  // hard locks
+  const animatingRef = useRef(false);
+  const animationTimeoutRef = useRef<number | null>(null);
+
   const width = state.grid[0].length * TILE;
   const height = state.grid.length * TILE;
 
-  // Renderer
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       drawGame(ctx, state);
     },
-    [state],
+    [state]
   );
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
-      if (isAnimating) return;
+      if (animatingRef.current) return;
 
       let rot: Rotation | null = null;
       let deg = 0;
@@ -54,27 +57,60 @@ export default function App() {
       if (!rot) return;
 
       e.preventDefault();
+
+      // kill any stray timeout
+      if (animationTimeoutRef.current !== null) {
+        clearTimeout(animationTimeoutRef.current);
+        animationTimeoutRef.current = null;
+      }
+
+      animatingRef.current = true;
+      setMessage("");
       setIsAnimating(true);
       setRotationDeg(deg);
 
-      setTimeout(() => {
+      animationTimeoutRef.current = window.setTimeout(() => {
         setRotationDeg(0);
 
         setState((prev) => {
           if (prev.status !== "playing") return prev;
 
           const copy = structuredClone(prev);
+          const before = copy.switchesHit.size;
+
           stepGame(copy, rot!);
+
+          if (copy.switchesHit.size > before) {
+            setMessage("Switch activated!");
+          }
+
+          if (
+            copy.switchesHit.size === copy.totalSwitches &&
+            copy.status === "playing"
+          ) {
+            setMessage("All switches activated — exit unlocked!");
+          }
+
+          if (copy.status === "won") {
+            setMessage("🎉 You escaped!");
+          }
+          
+          if (copy.status === "lost") {
+            setMessage("Move limit reached! You lost.");
+          }
+
           return copy;
         });
 
+        animatingRef.current = false;
         setIsAnimating(false);
+        animationTimeoutRef.current = null;
       }, 200);
     };
 
     window.addEventListener("keydown", onKeyDown, { passive: false });
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isAnimating]);
+  }, []);
 
   return (
     <div
@@ -101,6 +137,12 @@ export default function App() {
 
       {isAnimating && (
         <div style={{ marginTop: 8, opacity: 0.6 }}>Rotating…</div>
+      )}
+
+      {message && (
+        <div style={{ marginTop: 10, fontSize: 14, opacity: 0.85 }}>
+          {message}
+        </div>
       )}
 
       <div style={{ marginTop: 12, opacity: 0.8, fontSize: 14 }}>
