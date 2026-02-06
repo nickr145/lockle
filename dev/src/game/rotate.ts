@@ -9,7 +9,7 @@ export function rotateState(state: GameState, dir: Rotation) {
 
   if (dir === "CW") {
     for (let x = 0; x < W; x++) {
-      const row: typeof state.grid[number] = [];
+      const row: (typeof state.grid)[number] = [];
       for (let y = H - 1; y >= 0; y--) {
         row.push(old[y][x]);
       }
@@ -23,11 +23,17 @@ export function rotateState(state: GameState, dir: Rotation) {
       x: H - 1 - y,
       y: x,
     };
+
+    state.switches = state.switches.map((sw) => ({
+      ...sw,
+      x: H - 1 - sw.y,
+      y: sw.x,
+    }));
   }
 
   if (dir === "CCW") {
     for (let x = W - 1; x >= 0; x--) {
-      const row: typeof state.grid[number] = [];
+      const row: (typeof state.grid)[number] = [];
       for (let y = 0; y < H; y++) {
         row.push(old[y][x]);
       }
@@ -41,6 +47,12 @@ export function rotateState(state: GameState, dir: Rotation) {
       x: y,
       y: W - 1 - x,
     };
+
+    state.switches = state.switches.map((sw) => ({
+      ...sw,
+      x: sw.y,
+      y: W - 1 - sw.x,
+    }));
   }
 
   state.movesUsed++;

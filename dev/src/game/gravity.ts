@@ -26,12 +26,13 @@ export function applyGravity(state: GameState, dir: Direction): void {
     y = ny;
 
     // Switch activation
-    if (cell === "S") {
-      state.switchesHit.add(`${x},${y}`);
+    const sw = state.switches.find((s) => s.x === x && s.y === y);
+    if (sw) {
+      state.switchesHit.add(sw.id);
     }
 
     // Exit condition (exit unlocking comes later)
-    if (cell === "E" && state.switchesHit.size > 0) {
+    if (cell === "E" && state.switchesHit.size === state.totalSwitches) {
       state.status = "won";
       break;
     }

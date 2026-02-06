@@ -13,18 +13,26 @@ export type Position = {
   y: number;
 };
 
+export type Switch = {
+  id: number;
+  x: number;
+  y: number;
+};
+
+
 export type Direction = "up" | "down" | "left" | "right";
 
 export type Rotation = "CW" | "CCW";
 
-export type GameStatus = "playing" | "won" | "lost";
+export type GameStatus = "playing" | "won"; // | "lost";
 
 export type GameState = {
   grid: Grid;
   ball: Position;
-  switchesHit: Set<string>;
+  switches: Switch[];
+  switchesHit: Set<number>;
   totalSwitches: number;
   movesUsed: number;
-  moveLimit: number;
+  optimalMoves: number;
   status: GameStatus;
 };
