@@ -4,7 +4,7 @@ export function getDailyLevel() {
   const today = new Date();
 
   // YYYY-MM-DD (stable across reloads)
-  const key = today.toISOString().slice(0, 10);
+  const key = today.toLocaleDateString("en-CA");
 
   // Simple hash
   let hash = 0;
