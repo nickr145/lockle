@@ -5,18 +5,37 @@ import { stepGame } from "./game/engine";
 import { drawGame } from "./render/drawGame";
 import type { GameState, Rotation } from "./game/types";
 import { getDailyLevel } from "./game/daily";
+import { supabase, submitScore } from "./supabase";
 
 const TILE = 80;
 const LEVEL = getDailyLevel();
 
+function todayKey() {
+  return new Date().toLocaleDateString("en-CA");
+}
+
+function hasSubmittedToday() {
+  return localStorage.getItem("lockle_submitted_" + todayKey()) === "true";
+}
+
+function markSubmittedToday() {
+  localStorage.setItem("lockle_submitted_" + todayKey(), "true");
+}
+
 export default function App() {
+  const submittedRef = useRef(false);
   const statusRef = useRef<GameState["status"]>("playing");
   const [state, setState] = useState<GameState>(() =>
     parseLevel(LEVEL.layout, LEVEL.optimalMoves),
   );
+
   useEffect(() => {
     statusRef.current = state.status;
   }, [state.status]);
+
+  useEffect(() => {
+    supabase.from("submissions").select("*").then(console.log);
+  }, []);
 
   const [isAnimating, setIsAnimating] = useState(false);
   const [rotationDeg, setRotationDeg] = useState(0);
@@ -39,6 +58,7 @@ export default function App() {
   function resetGame() {
     statusRef.current = "playing";
     animatingRef.current = false;
+    submittedRef.current = false;
 
     if (animationTimeoutRef.current !== null) {
       clearTimeout(animationTimeoutRef.current);
@@ -89,7 +109,22 @@ export default function App() {
           setMessage("All switches activated — exit unlocked!");
         }
 
-        if (copy.status === "won") setMessage("You escaped!");
+        if (copy.status === "won" && !submittedRef.current && !hasSubmittedToday()) {
+          submittedRef.current = true;
+          markSubmittedToday();
+          
+          setMessage("You escaped!");
+
+          submitScore(new Date().toLocaleDateString("en-CA"), copy.movesUsed).then(
+            (res) => {
+              if (res.error) {
+                console.error("Error submitting score:", res.error.message);
+              } else {
+                console.log("Score submitted successfully!");
+              }
+            },
+          );
+        }
         // if (copy.status === "lost") setMessage("Out of moves!");
 
         return copy;
