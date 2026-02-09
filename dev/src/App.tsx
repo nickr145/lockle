@@ -10,6 +10,18 @@ import { supabase, submitScore } from "./supabase";
 const TILE = 80;
 const LEVEL = getDailyLevel();
 
+function todayKey() {
+  return new Date().toLocaleDateString("en-CA");
+}
+
+function hasSubmittedToday() {
+  return localStorage.getItem("lockle_submitted_" + todayKey()) === "true";
+}
+
+function markSubmittedToday() {
+  localStorage.setItem("lockle_submitted_" + todayKey(), "true");
+}
+
 export default function App() {
   const submittedRef = useRef(false);
   const statusRef = useRef<GameState["status"]>("playing");
@@ -46,6 +58,7 @@ export default function App() {
   function resetGame() {
     statusRef.current = "playing";
     animatingRef.current = false;
+    submittedRef.current = false;
 
     if (animationTimeoutRef.current !== null) {
       clearTimeout(animationTimeoutRef.current);
@@ -96,7 +109,10 @@ export default function App() {
           setMessage("All switches activated — exit unlocked!");
         }
 
-        if (copy.status === "won") {
+        if (copy.status === "won" && !submittedRef.current && !hasSubmittedToday()) {
+          submittedRef.current = true;
+          markSubmittedToday();
+          
           setMessage("You escaped!");
 
           submitScore(new Date().toLocaleDateString("en-CA"), copy.movesUsed).then(
