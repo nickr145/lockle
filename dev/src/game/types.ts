@@ -36,3 +36,11 @@ export type GameState = {
   optimalMoves: number;
   status: GameStatus;
 };
+
+export type DailyResults = {
+  day: string;
+  moves: number;
+  optimalMoves: number;
+  percentile: number; // 0–100
+  distribution: number[]; // histogram buckets
+};

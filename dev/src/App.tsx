@@ -3,9 +3,11 @@ import GameCanvas from "./components/GameCanvas";
 import { parseLevel } from "./game/state";
 import { stepGame } from "./game/engine";
 import { drawGame } from "./render/drawGame";
-import type { GameState, Rotation } from "./game/types";
+import type { GameState, Rotation, DailyResults } from "./game/types";
 import { getDailyLevel } from "./game/daily";
 import { supabase, submitScore } from "./supabase";
+import { fetchDailyStats } from "./game/dailyStats";
+import ResultsModal from "./components/ResultsModal";
 
 const TILE = 80;
 const LEVEL = getDailyLevel();
@@ -23,6 +25,8 @@ function markSubmittedToday() {
 }
 
 export default function App() {
+  const [showResults, setShowResults] = useState(false);
+  const [results, setResults] = useState<DailyResults | null>(null);
   const submittedRef = useRef(false);
   const statusRef = useRef<GameState["status"]>("playing");
   const [state, setState] = useState<GameState>(() =>
@@ -94,7 +98,7 @@ export default function App() {
         if (prev.status !== "playing") return prev;
 
         const copy = structuredClone(prev);
-        const before = copy.switchesHit.size;
+        // const before = copy.switchesHit.size;
 
         stepGame(copy, rot);
 
@@ -109,21 +113,24 @@ export default function App() {
           setMessage("All switches activated — exit unlocked!");
         }
 
-        if (copy.status === "won" && !submittedRef.current && !hasSubmittedToday()) {
+        if (copy.status === "won" && !submittedRef.current) { // && !hasSubmittedToday()) {
           submittedRef.current = true;
           markSubmittedToday();
-          
+
+          const results: DailyResults = {
+            day: todayKey(),
+            moves: copy.movesUsed,
+            optimalMoves: copy.optimalMoves,
+            percentile: 78, // placeholder for now
+            distribution: [0, 1, 3, 8, 15, 22, 10, 4], // placeholder
+          };
+
+          setResults(results);
+          setShowResults(true);
+
           setMessage("You escaped!");
 
-          submitScore(new Date().toLocaleDateString("en-CA"), copy.movesUsed).then(
-            (res) => {
-              if (res.error) {
-                console.error("Error submitting score:", res.error.message);
-              } else {
-                console.log("Score submitted successfully!");
-              }
-            },
-          );
+          submitScore(todayKey(), copy.movesUsed);
         }
         // if (copy.status === "lost") setMessage("Out of moves!");
 
@@ -179,10 +186,6 @@ export default function App() {
         <GameCanvas draw={draw} width={width} height={height} />
       </div>
 
-      {/* {isAnimating && (
-        <div style={{ marginTop: 8, opacity: 0.6 }}>Rotating…</div>
-      )} */}
-
       {message && (
         <div style={{ marginTop: 10, fontSize: 14, opacity: 0.85 }}>
           {message}
@@ -204,6 +207,10 @@ export default function App() {
       <div style={{ marginTop: 12, opacity: 0.8, fontSize: 14 }}>
         Rotate: ←/A and →/D
       </div>
+
+      {showResults && results && (
+        <ResultsModal results={results} onClose={() => setShowResults(false)} />
+      )}
     </div>
   );
 }
