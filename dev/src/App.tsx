@@ -8,6 +8,7 @@ import { getDailyLevel } from "./game/daily";
 import { submitScore } from "./supabase";
 import { fetchDailyStats } from "./game/dailyStats";
 import ResultsModal from "./components/ResultsModal";
+import AboutModal from "./components/AboutModal";
 
 const TILE = 80;
 const LEVEL = getDailyLevel();
@@ -20,8 +21,7 @@ function medalFor(moves: number, optimal: number) {
 }
 
 function shareResults(results: DailyResults) {
-  const text = `https://lockle.app
-Day ${results.day}
+  const text = `https://lockle.app Day ${results.day}
 ${medalFor(results.moves, results.optimalMoves)}
 ${results.moves} moves`;
 
@@ -43,6 +43,7 @@ function markSubmittedToday() {
 
 export default function App() {
   const [showResults, setShowResults] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [results, setResults] = useState<DailyResults | null>(null);
 
   const submittedRef = useRef(false);
@@ -62,8 +63,11 @@ export default function App() {
   const animatingRef = useRef(false);
   const animationTimeoutRef = useRef<number | null>(null);
 
-  const width = state.grid[0].length * TILE;
-  const height = state.grid.length * TILE;
+  const gridW = state.grid[0].length * TILE;
+  const gridH = state.grid.length * TILE;
+
+  // "diagonal" canvas so rotations never clip + frame never snaps
+  const canvasSize = Math.ceil(Math.sqrt(gridW * gridW + gridH * gridH));
 
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
@@ -211,6 +215,13 @@ export default function App() {
           <div className="chip">
             <span>Moves</span> {state.movesUsed}
           </div>
+          <button
+            className="btn btnIcon"
+            onClick={() => setShowAbout(true)}
+            aria-label="About"
+          >
+            ?
+          </button>
           <button className="btn btnDanger" onClick={resetGame}>
             Reset
           </button>
@@ -218,53 +229,42 @@ export default function App() {
       </div>
 
       <div className="center">
-        <div className="boardCard">
-          <div className="boardHeader">
-            <div className="tip">
-              Hit all locks (🔒 → 🔓), then escape through the trapdoor.
-            </div>
-
-            <div className="controls">
-              <button
-                className="btn btnPrimary"
-                onClick={() => triggerRotate("CCW")}
-              >
-                ⟲ Rotate Left
-              </button>
-              <button
-                className="btn btnPrimary"
-                onClick={() => triggerRotate("CW")}
-              >
-                Rotate Right ⟳
-              </button>
+        {/* one merged “cabinet” */}
+        <div
+          className="cabinet"
+          style={{ ["--stageSize" as any]: `${canvasSize}px` }}
+        >
+          {/* static screen frame */}
+          <div className="screenFrame">
+            {/* ONLY this rotates */}
+            <div
+              className="boardRotator"
+              style={{
+                transform: `rotate(${rotationDeg}deg)`,
+                transition: isAnimating
+                  ? "transform 200ms ease-in-out"
+                  : "none",
+              }}
+            >
+              <GameCanvas draw={draw} width={canvasSize} height={canvasSize} />
             </div>
           </div>
 
-          <div
-            style={{
-              transformOrigin: "center center",
-              transform: `rotate(${rotationDeg}deg)`,
-              transition: isAnimating ? "transform 200ms ease-in-out" : "none",
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
-            <GameCanvas draw={draw} width={width} height={height} />
-          </div>
+          {/* control deck (merged, same card) */}
+          <div className="controlDeck">
+            <button
+              className="btn btnPrimary"
+              onClick={() => triggerRotate("CCW")}
+            >
+              ⟲ Rotate Left
+            </button>
 
-          <div className="footerRow">
-            <div className="statusLine">
-              {message
-                ? message
-                : state.status === "won"
-                  ? `Escaped in ${state.movesUsed} moves. Optimal: ${state.optimalMoves}.`
-                  : "Rotate to roll the metal orb into locks and out the exit."}
-            </div>
-
-            <div className="kbd">
-              Rotate: <code>←</code>/<code>A</code> and <code>→</code>/
-              <code>D</code>
-            </div>
+            <button
+              className="btn btnPrimary"
+              onClick={() => triggerRotate("CW")}
+            >
+              Rotate Right ⟳
+            </button>
           </div>
         </div>
       </div>
@@ -276,6 +276,14 @@ export default function App() {
           results={results}
           onClose={() => setShowResults(false)}
           onShare={() => shareResults(results)}
+        />
+      )}
+      {showAbout && (
+        <AboutModal
+          day={todayKey()}
+          state={state}
+          results={results}
+          onClose={() => setShowAbout(false)}
         />
       )}
     </div>

@@ -16,18 +16,18 @@ html, body, #root {
   --muted: rgba(255,255,255,0.65);
 
   --accent: #60a5fa;
-  --gold: #fbbf24;
-  --green: #34d399;
   --danger: #fb7185;
 
   --shadow: 0 22px 70px rgba(0,0,0,0.55);
+
+  /* stage size set from App.tsx */
+  --stage: 560px;
 }
 
 body{
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
 
-  /* dungeon-y background */
   background:
     radial-gradient(1400px 900px at 15% 0%, rgba(96,165,250,0.20), transparent 55%),
     radial-gradient(900px 700px at 100% 25%, rgba(251,191,36,0.18), transparent 55%),
@@ -119,34 +119,77 @@ body::before{
 .center{
   display:grid;
   place-items:center;
+  padding-top: 4px; /* moves the whole unit upward */
 }
 
 .boardCard{
-  width: min(760px, 96vw);
+  width: min(860px, 96vw);
   border-radius: 22px;
-  padding: 16px;
   background: rgba(0,0,0,0.34);
   border: 1px solid rgba(255,255,255,0.12);
   box-shadow: var(--shadow);
+  overflow: hidden; /* makes it feel like one merged unit */
 }
 
-.boardHeader{
+/* STATIC FRAME (does not rotate) */
+.boardFrame{
+  width: var(--stage);
+  height: var(--stage);
+  margin: 18px auto 0;
+  border-radius: 18px;
+  background: rgba(0,0,0,0.30);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06),
+              0 18px 60px rgba(0,0,0,0.55);
+  overflow: hidden; /* clips any rotating corners cleanly */
+  display: grid;
+  place-items: center;
+}
+
+/* ROTATOR (only this rotates) */
+.boardRotator{
+  will-change: transform;
+  display: grid;
+  place-items: center;
+}
+
+/* Integrated bottom arcade strip */
+.arcadePanel{
+  margin-top: 16px;
+  padding: 14px 14px;
   display:flex;
   align-items:center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 12px;
   flex-wrap: wrap;
+
+  background: rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255,255,255,0.10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
-.tip{
+.arcadeLeft{
+  display:flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.arcadeLabel{
+  font-size: 11px;
+  letter-spacing: 0.9px;
+  font-weight: 950;
+  opacity: 0.9;
+}
+
+.arcadeSub{
   font-size: 12px;
   color: var(--muted);
 }
 
 .controls{
   display:flex;
-  gap: 10px;
+  justify-content: center;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -180,30 +223,76 @@ body::before{
   background: rgba(251,113,133,0.14);
 }
 
-.footerRow{
-  display:flex;
-  align-items:center;
-  justify-content: space-between;
+/* move the whole cabinet upward a bit */
+.center{
+  display: grid;
+  place-items: center;
+  padding-top: 6px;          /* smaller = higher */
+}
+
+/* single merged cabinet card */
+.cabinet{
+  width: min(900px, 96vw);
+  border-radius: 22px;
+  padding: 16px;
+  background: rgba(0,0,0,0.34);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: var(--shadow);
+}
+
+/* static screen frame (THIS should not rotate) */
+.screenFrame{
+  width: var(--stageSize);
+  height: var(--stageSize);
+  margin: 0 auto;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 18px;
+  background: rgba(0,0,0,0.40);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 14px 50px rgba(0,0,0,0.55);
+
+  overflow: hidden; /* hides corners cleanly */
+}
+
+/* only the canvas content rotates */
+.boardRotator{
+  width: var(--stageSize);
+  height: var(--stageSize);
+  display: grid;
+  place-items: center;
+  transform-origin: center center;
+}
+
+/* control deck is part of the same cabinet */
+.controlDeck{
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+
+  display: flex;
+  justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 0 4px;
-  margin-top: 12px;
 }
 
-.statusLine{
-  font-size: 13px;
-  color: var(--muted);
+.btnIcon{
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 950;
+  background: rgba(255,255,255,0.06);
 }
-
-.kbd{
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.kbd code{
-  padding: 2px 6px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.10);
-  color: var(--text);
+.btnIcon:hover{
+  background: rgba(255,255,255,0.10);
 }

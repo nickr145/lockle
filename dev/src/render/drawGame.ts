@@ -251,48 +251,61 @@ function drawMetalBall(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
 
 export function drawGame(ctx: CanvasRenderingContext2D, state: GameState) {
   const { grid, ball } = state;
+
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
 
+  const gridW = grid[0].length * TILE;
+  const gridH = grid.length * TILE;
+
+  // center the actual board inside the larger canvas
+  const offsetX = Math.floor((w - gridW) / 2);
+  const offsetY = Math.floor((h - gridH) / 2);
+
   ctx.clearRect(0, 0, w, h);
 
-  // dungeon floor base
+  // dungeon base (full canvas)
   const bg = ctx.createLinearGradient(0, 0, 0, h);
   bg.addColorStop(0, "#0b1220");
   bg.addColorStop(1, "#070a12");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 
-  // draw tiles
+  // draw tiles (offset)
   for (let y = 0; y < grid.length; y++) {
     for (let x = 0; x < grid[0].length; x++) {
       const cell = grid[y][x];
-      const px = x * TILE;
-      const py = y * TILE;
+      const px = offsetX + x * TILE;
+      const py = offsetY + y * TILE;
 
-      if (cell === "#") {
-        drawBrickWall(ctx, px, py);
-      } else {
-        drawStoneTile(ctx, px, py);
-      }
+      if (cell === "#") drawBrickWall(ctx, px, py);
+      else drawStoneTile(ctx, px, py);
 
       if (cell === "E") {
-        // open trapdoor once all locks hit
         const open = state.switchesHit.size === state.totalSwitches;
         drawTrapdoor(ctx, px, py, open);
       }
     }
   }
 
-  // locks (replacing circles)
+  // locks (offset)
   for (const sw of state.switches) {
     const unlocked = state.switchesHit.has(sw.id);
-    drawLock(ctx, sw.x * TILE + TILE / 2, sw.y * TILE + TILE / 2, unlocked);
+    drawLock(
+      ctx,
+      offsetX + sw.x * TILE + TILE / 2,
+      offsetY + sw.y * TILE + TILE / 2,
+      unlocked,
+    );
   }
 
-  // metal ball
-  drawMetalBall(ctx, ball.x * TILE + TILE / 2, ball.y * TILE + TILE / 2);
+  // ball (offset)
+  drawMetalBall(
+    ctx,
+    offsetX + ball.x * TILE + TILE / 2,
+    offsetY + ball.y * TILE + TILE / 2,
+  );
 
-  // vignette for mood
+  // vignette (full canvas)
   drawVignette(ctx, w, h);
 }
