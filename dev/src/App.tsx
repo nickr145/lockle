@@ -5,18 +5,35 @@ import { stepGame } from "./game/engine";
 import { drawGame } from "./render/drawGame";
 import type { GameState, Rotation, DailyResults } from "./game/types";
 import { getDailyLevel } from "./game/daily";
-import { supabase, submitScore } from "./supabase";
+import { submitScore } from "./supabase";
 import { fetchDailyStats } from "./game/dailyStats";
 import ResultsModal from "./components/ResultsModal";
 
 const TILE = 80;
 const LEVEL = getDailyLevel();
 
+function medalFor(moves: number, optimal: number) {
+  if (moves <= optimal) return "💎 PERFECT";
+  if (moves <= optimal + 1) return "🥇 Great";
+  if (moves <= optimal + 3) return "🥈 Good";
+  return "🥉 Okay";
+}
+
+function shareResults(results: DailyResults) {
+  const text = `https://lockle.app
+Day ${results.day}
+${medalFor(results.moves, results.optimalMoves)}
+${results.moves} moves`;
+
+  navigator.clipboard.writeText(text);
+}
+
 function todayKey() {
   return new Date().toLocaleDateString("en-CA");
 }
 
 function hasSubmittedToday() {
+  if (import.meta.env.DEV) return false;
   return localStorage.getItem("lockle_submitted_" + todayKey()) === "true";
 }
 
@@ -27,6 +44,7 @@ function markSubmittedToday() {
 export default function App() {
   const [showResults, setShowResults] = useState(false);
   const [results, setResults] = useState<DailyResults | null>(null);
+
   const submittedRef = useRef(false);
   const statusRef = useRef<GameState["status"]>("playing");
   const [state, setState] = useState<GameState>(() =>
@@ -37,15 +55,10 @@ export default function App() {
     statusRef.current = state.status;
   }, [state.status]);
 
-  useEffect(() => {
-    supabase.from("submissions").select("*").then(console.log);
-  }, []);
-
   const [isAnimating, setIsAnimating] = useState(false);
   const [rotationDeg, setRotationDeg] = useState(0);
   const [message, setMessage] = useState("");
 
-  // hard locks
   const animatingRef = useRef(false);
   const animationTimeoutRef = useRef<number | null>(null);
 
@@ -98,41 +111,62 @@ export default function App() {
         if (prev.status !== "playing") return prev;
 
         const copy = structuredClone(prev);
-        // const before = copy.switchesHit.size;
-
         stepGame(copy, rot);
-
-        // if (copy.switchesHit.size > before) {
-        //   setMessage("Switch activated!");
-        // }
 
         if (
           copy.switchesHit.size === copy.totalSwitches &&
           copy.status === "playing"
         ) {
-          setMessage("All switches activated — exit unlocked!");
+          setMessage("Locks released — trapdoor unlocked!");
         }
 
-        if (copy.status === "won" && !submittedRef.current) { // && !hasSubmittedToday()) {
+        if (
+          copy.status === "won" &&
+          !submittedRef.current &&
+          !hasSubmittedToday()
+        ) {
           submittedRef.current = true;
-          markSubmittedToday();
 
-          const results: DailyResults = {
-            day: todayKey(),
-            moves: copy.movesUsed,
+          const day = todayKey();
+          const moves = copy.movesUsed;
+
+          setResults({
+            day,
+            moves,
             optimalMoves: copy.optimalMoves,
-            percentile: 78, // placeholder for now
-            distribution: [0, 1, 3, 8, 15, 22, 10, 4], // placeholder
-          };
-
-          setResults(results);
+            percentile: 0,
+            distribution: [],
+            total: 0,
+            bronze: moves,
+            silver: moves,
+            gold: moves,
+          });
           setShowResults(true);
 
-          setMessage("You escaped!");
+          setTimeout(async () => {
+            try {
+              await submitScore(day, moves);
+              markSubmittedToday();
 
-          submitScore(todayKey(), copy.movesUsed);
+              const stats = await fetchDailyStats(day, moves);
+
+              setResults({
+                day,
+                moves,
+                optimalMoves: copy.optimalMoves,
+                percentile: stats.percentile,
+                distribution: stats.buckets,
+                total: stats.total,
+                bronze: stats.bronze,
+                silver: stats.silver,
+                gold: stats.gold,
+              });
+            } catch (e) {
+              console.error("Failed to submit score or fetch stats", e);
+              submittedRef.current = false;
+            }
+          }, 0);
         }
-        // if (copy.status === "lost") setMessage("Out of moves!");
 
         return copy;
       });
@@ -163,53 +197,86 @@ export default function App() {
   }, []);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 20,
-      }}
-    >
-      <h1>Lockle</h1>
-      <div style={{ opacity: 0.6, fontSize: 12 }}>Daily Puzzle</div>
-
-      <div
-        style={{
-          transformOrigin: "center center",
-          transform: `rotate(${rotationDeg}deg)`,
-          transition: isAnimating ? "transform 200ms ease-in-out" : "none",
-        }}
-      >
-        <GameCanvas draw={draw} width={width} height={height} />
-      </div>
-
-      {message && (
-        <div style={{ marginTop: 10, fontSize: 14, opacity: 0.85 }}>
-          {message}
+    <div className="appShell">
+      <div className="topBar">
+        <div className="brand">
+          <div className="brandTitle">LOCKLE</div>
+          <div className="brandSub">Dungeon Daily Puzzle</div>
         </div>
-      )}
 
-      <div style={{ fontSize: 14, opacity: 0.8 }}>
-        {state.status === "won"
-          ? `Solved in ${state.movesUsed} moves. Optimal: ${state.optimalMoves} moves.`
-          : "Moves made: " + state.movesUsed}
+        <div className="hud">
+          <div className="chip">
+            <span>Day</span> {todayKey()}
+          </div>
+          <div className="chip">
+            <span>Moves</span> {state.movesUsed}
+          </div>
+          <button className="btn btnDanger" onClick={resetGame}>
+            Reset
+          </button>
+        </div>
       </div>
 
-      <button onClick={resetGame}>Reset</button>
-      <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={() => triggerRotate("CCW")}>⟲ Left</button>
-        <button onClick={() => triggerRotate("CW")}>Right ⟳</button>
+      <div className="center">
+        <div className="boardCard">
+          <div className="boardHeader">
+            <div className="tip">
+              Hit all locks (🔒 → 🔓), then escape through the trapdoor.
+            </div>
+
+            <div className="controls">
+              <button
+                className="btn btnPrimary"
+                onClick={() => triggerRotate("CCW")}
+              >
+                ⟲ Rotate Left
+              </button>
+              <button
+                className="btn btnPrimary"
+                onClick={() => triggerRotate("CW")}
+              >
+                Rotate Right ⟳
+              </button>
+            </div>
+          </div>
+
+          <div
+            style={{
+              transformOrigin: "center center",
+              transform: `rotate(${rotationDeg}deg)`,
+              transition: isAnimating ? "transform 200ms ease-in-out" : "none",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            <GameCanvas draw={draw} width={width} height={height} />
+          </div>
+
+          <div className="footerRow">
+            <div className="statusLine">
+              {message
+                ? message
+                : state.status === "won"
+                  ? `Escaped in ${state.movesUsed} moves. Optimal: ${state.optimalMoves}.`
+                  : "Rotate to roll the metal orb into locks and out the exit."}
+            </div>
+
+            <div className="kbd">
+              Rotate: <code>←</code>/<code>A</code> and <code>→</code>/
+              <code>D</code>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div style={{ marginTop: 12, opacity: 0.8, fontSize: 14 }}>
-        Rotate: ←/A and →/D
-      </div>
+      <div />
 
       {showResults && results && (
-        <ResultsModal results={results} onClose={() => setShowResults(false)} />
+        <ResultsModal
+          results={results}
+          onClose={() => setShowResults(false)}
+          onShare={() => shareResults(results)}
+        />
       )}
     </div>
   );

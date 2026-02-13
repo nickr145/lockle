@@ -1,10 +1,10 @@
 // src/game/types.ts
 
 export type Cell =
-  | "#"   // wall
-  | "."   // empty
-  | "S"   // switch
-  | "E";  // exit
+  | "#" // wall
+  | "." // empty
+  | "S" // switch
+  | "E"; // exit
 
 export type Grid = Cell[][];
 
@@ -18,7 +18,6 @@ export type Switch = {
   x: number;
   y: number;
 };
-
 
 export type Direction = "up" | "down" | "left" | "right";
 
@@ -43,4 +42,8 @@ export type DailyResults = {
   optimalMoves: number;
   percentile: number; // 0–100
   distribution: number[]; // histogram buckets
+  total: number;
+  bronze: number;
+  silver: number;
+  gold: number;
 };

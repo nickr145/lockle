@@ -1,64 +1,97 @@
+import { useEffect } from "react";
 import Histogram from "./Histogram";
 import type { DailyResults } from "../game/types";
+import styles from "./ResultsModal.module.css";
 
 type ResultsModalProps = {
   results: DailyResults;
   onClose: () => void;
+  onShare: () => void;
 };
 
-export default function ResultsModal({ results, onClose }: ResultsModalProps) {
+export default function ResultsModal({
+  results,
+  onClose,
+  onShare,
+}: ResultsModalProps) {
+  const statsReady = results.distribution.length > 0;
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.6)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 50,
-      }}
-    >
+    <div className={styles.backdrop} onMouseDown={onClose}>
       <div
-        style={{
-          background: "#f5e6d6",
-          padding: 24,
-          width: 420,
-          borderRadius: 12,
-          position: "relative",
-        }}
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        onMouseDown={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          style={{ position: "absolute", top: 12, right: 12 }}
-        >
-          ✕
-        </button>
+        <div className={styles.header}>
+          <div>
+            <h2 className={styles.title}>Results</h2>
+            <div className={styles.subtitle}>Day {results.day}</div>
+          </div>
 
-        <h2>Results — Day {results.day}</h2>
-
-        <div style={{ fontSize: 48, margin: "12px 0" }}>
-          {results.moves}
+          <button className={styles.close} onClick={onClose} aria-label="Close">
+            ✕
+          </button>
         </div>
 
-        <div>
-          Optimal: {results.optimalMoves}
+        <div className={styles.bigNumber}>{results.moves}</div>
+
+        <div className={styles.pills}>
+          <div className={styles.pill}>
+            <div className={styles.pillLabel}>Optimal</div>
+            <div className={styles.pillValue}>{results.optimalMoves}</div>
+          </div>
+
+          <div className={styles.pill}>
+            <div className={styles.pillLabel}>Percentile</div>
+            <div className={styles.pillValue}>
+              {statsReady ? `${results.percentile}%` : "…"}
+            </div>
+          </div>
         </div>
 
-        <div style={{ marginTop: 16 }}>
-          <Histogram
-            buckets={results.distribution}
-            youIndex={results.moves}
-          />
+        <div className={styles.metaRow}>
+          <div>🥇 ≤ {results.gold}</div>
+          <div>🥈 ≤ {results.silver}</div>
+          <div>🥉 ≤ {results.bronze}</div>
+          <div className={styles.metaRight}>{results.total} plays</div>
         </div>
 
-        <div style={{ marginTop: 16, fontSize: 14 }}>
-          You beat {results.percentile}% of players
+        <div className={styles.card}>
+          <div className={styles.cardTitleRow}>
+            <div className={styles.cardTitle}>Distribution</div>
+            <div className={styles.cardHint}>Your bar is highlighted</div>
+          </div>
+
+          <Histogram buckets={results.distribution} yourMoves={results.moves} />
         </div>
 
-        <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-          <button>Share</button>
-          <button>View Optimal</button>
+        <div className={styles.percentile}>
+          {statsReady
+            ? `You beat ${results.percentile}% of players`
+            : "Calculating today’s stats…"}
+        </div>
+
+        <div className={styles.actions}>
+          <button
+            className={`${styles.btn} ${styles.primary}`}
+            onClick={onShare}
+          >
+            Share
+          </button>
+
+          <button className={`${styles.btn} ${styles.secondary}`}>
+            View Optimal
+          </button>
         </div>
       </div>
     </div>

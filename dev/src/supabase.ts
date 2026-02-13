@@ -6,5 +6,16 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function submitScore(day: string, moves: number) {
-  return supabase.from("submissions").insert({ day, moves });
+  const { data, error } = await supabase
+    .from("submissions")
+    .insert({ day, moves })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error submitting score:", error);
+    throw error;
+  }
+
+  return data;
 }
