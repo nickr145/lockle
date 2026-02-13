@@ -9,6 +9,7 @@ import { submitScore } from "./supabase";
 import { fetchDailyStats } from "./game/dailyStats";
 import ResultsModal from "./components/ResultsModal";
 import AboutModal from "./components/AboutModal";
+import { getDeviceId } from "./game/device";
 
 const TILE = 80;
 const LEVEL = getDailyLevel();
@@ -32,13 +33,16 @@ function todayKey() {
   return new Date().toLocaleDateString("en-CA");
 }
 
-function hasSubmittedToday() {
+function submittedKey(day: string, deviceId: string) {
+  return `lockle_submitted_${day}_${deviceId}`;
+}
+function hasSubmittedToday(deviceId: string) {
   if (import.meta.env.DEV) return false;
-  return localStorage.getItem("lockle_submitted_" + todayKey()) === "true";
+  return localStorage.getItem(submittedKey(todayKey(), deviceId)) === "true";
 }
 
-function markSubmittedToday() {
-  localStorage.setItem("lockle_submitted_" + todayKey(), "true");
+function markSubmittedToday(deviceId: string) {
+  localStorage.setItem(submittedKey(todayKey(), deviceId), "true");
 }
 
 export default function App() {
@@ -51,6 +55,7 @@ export default function App() {
   const [state, setState] = useState<GameState>(() =>
     parseLevel(LEVEL.layout, LEVEL.optimalMoves),
   );
+  const deviceIdRef = useRef<string>(getDeviceId());
 
   useEffect(() => {
     statusRef.current = state.status;
@@ -127,7 +132,7 @@ export default function App() {
         if (
           copy.status === "won" &&
           !submittedRef.current &&
-          !hasSubmittedToday()
+          !hasSubmittedToday(deviceIdRef.current)
         ) {
           submittedRef.current = true;
 
@@ -150,7 +155,7 @@ export default function App() {
           setTimeout(async () => {
             try {
               await submitScore(day, moves);
-              markSubmittedToday();
+              markSubmittedToday(deviceIdRef.current);
 
               const stats = await fetchDailyStats(day, moves);
 
