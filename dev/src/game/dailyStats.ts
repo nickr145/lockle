@@ -24,7 +24,7 @@ export async function fetchDailyStats(
   // RPC returns ONE row (or null)
   const row = (Array.isArray(data) ? data[0] : data) as DailyStatsRpcRow | null;
 
-  const totalFromDb = row?.total ?? 0;
+  // const totalFromDb = row?.total ?? 0;
   const counts = row?.moves_counts ?? {};
 
   // Build a score list (expanded) for percentile + quartiles
