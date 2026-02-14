@@ -1,0 +1,179 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  width: min(520px, 92vw);
+  border-radius: 18px;
+  padding: 20px 20px 18px;
+  background: #f3e8d9;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: rgba(0, 0, 0, 0.92);
+}
+
+.subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  opacity: 0.65;
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.85);
+  display: grid;
+  place-items: center;
+}
+
+.close:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.bigNumber {
+  margin-top: 14px;
+  font-size: 64px;
+  font-weight: 850;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.92);
+}
+
+.pills {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.pill {
+  flex: 1;
+  min-width: 120px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.pillLabel {
+  font-size: 12px;
+  opacity: 0.65;
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.pillValue {
+  margin-top: 2px;
+  font-size: 16px;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.92);
+}
+
+.metaRow {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  opacity: 0.85;
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.metaRight {
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+.card {
+  margin-top: 14px;
+  border-radius: 14px;
+  padding: 12px 12px 6px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.cardTitle {
+  font-size: 12px;
+  font-weight: 750;
+  opacity: 0.7;
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.cardHint {
+  font-size: 12px;
+  opacity: 0.55;
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.percentile {
+  margin-top: 12px;
+  font-size: 14px;
+  opacity: 0.8;
+  color: rgba(0, 0, 0, 0.92);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.btn {
+  flex: 1;
+  padding: 11px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.primary {
+  border: none;
+  background: #3b82f6;
+  color: white;
+}
+
+.primary:hover {
+  filter: brightness(0.96);
+}
+
+.secondary {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.secondary:hover {
+  background: rgba(255, 255, 255, 0.85);
+}

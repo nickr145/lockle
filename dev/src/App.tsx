@@ -3,50 +3,76 @@ import GameCanvas from "./components/GameCanvas";
 import { parseLevel } from "./game/state";
 import { stepGame } from "./game/engine";
 import { drawGame } from "./render/drawGame";
-import type { GameState, Rotation } from "./game/types";
+import type { GameState, Rotation, DailyResults } from "./game/types";
 import { getDailyLevel } from "./game/daily";
-import { supabase, submitScore } from "./supabase";
+import { submitScore } from "./supabase";
+import { fetchDailyStats } from "./game/dailyStats";
+import ResultsModal from "./components/ResultsModal";
+import AboutModal from "./components/AboutModal";
+import { getDeviceId } from "./game/device";
 
 const TILE = 80;
 const LEVEL = getDailyLevel();
+
+function medalFor(moves: number, optimal: number) {
+  if (moves <= optimal) return "💎 PERFECT";
+  if (moves <= optimal + 1) return "🥇 Great";
+  if (moves <= optimal + 3) return "🥈 Good";
+  return "🥉 Okay";
+}
+
+function shareResults(results: DailyResults) {
+  const text = `https://lockle.app Day ${results.day}
+${medalFor(results.moves, results.optimalMoves)}
+${results.moves} moves`;
+
+  navigator.clipboard.writeText(text);
+}
 
 function todayKey() {
   return new Date().toLocaleDateString("en-CA");
 }
 
-function hasSubmittedToday() {
-  return localStorage.getItem("lockle_submitted_" + todayKey()) === "true";
+function submittedKey(day: string, deviceId: string) {
+  return `lockle_submitted_${day}_${deviceId}`;
+}
+function hasSubmittedToday(deviceId: string) {
+  if (import.meta.env.DEV) return false;
+  return localStorage.getItem(submittedKey(todayKey(), deviceId)) === "true";
 }
 
-function markSubmittedToday() {
-  localStorage.setItem("lockle_submitted_" + todayKey(), "true");
+function markSubmittedToday(deviceId: string) {
+  localStorage.setItem(submittedKey(todayKey(), deviceId), "true");
 }
 
 export default function App() {
+  const [showResults, setShowResults] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [results, setResults] = useState<DailyResults | null>(null);
+
   const submittedRef = useRef(false);
   const statusRef = useRef<GameState["status"]>("playing");
   const [state, setState] = useState<GameState>(() =>
     parseLevel(LEVEL.layout, LEVEL.optimalMoves),
   );
+  const deviceIdRef = useRef<string>(getDeviceId());
 
   useEffect(() => {
     statusRef.current = state.status;
   }, [state.status]);
 
-  useEffect(() => {
-    supabase.from("submissions").select("*").then(console.log);
-  }, []);
-
   const [isAnimating, setIsAnimating] = useState(false);
   const [rotationDeg, setRotationDeg] = useState(0);
   const [message, setMessage] = useState("");
 
-  // hard locks
   const animatingRef = useRef(false);
   const animationTimeoutRef = useRef<number | null>(null);
 
-  const width = state.grid[0].length * TILE;
-  const height = state.grid.length * TILE;
+  const gridW = state.grid[0].length * TILE;
+  const gridH = state.grid.length * TILE;
+
+  // "diagonal" canvas so rotations never clip + frame never snaps
+  const canvasSize = Math.ceil(Math.sqrt(gridW * gridW + gridH * gridH));
 
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
@@ -94,38 +120,62 @@ export default function App() {
         if (prev.status !== "playing") return prev;
 
         const copy = structuredClone(prev);
-        const before = copy.switchesHit.size;
-
         stepGame(copy, rot);
-
-        // if (copy.switchesHit.size > before) {
-        //   setMessage("Switch activated!");
-        // }
 
         if (
           copy.switchesHit.size === copy.totalSwitches &&
           copy.status === "playing"
         ) {
-          setMessage("All switches activated — exit unlocked!");
+          setMessage("Locks released — trapdoor unlocked!");
         }
 
-        if (copy.status === "won" && !submittedRef.current && !hasSubmittedToday()) {
+        if (
+          copy.status === "won" &&
+          !submittedRef.current &&
+          !hasSubmittedToday(deviceIdRef.current)
+        ) {
           submittedRef.current = true;
-          markSubmittedToday();
-          
-          setMessage("You escaped!");
 
-          submitScore(new Date().toLocaleDateString("en-CA"), copy.movesUsed).then(
-            (res) => {
-              if (res.error) {
-                console.error("Error submitting score:", res.error.message);
-              } else {
-                console.log("Score submitted successfully!");
-              }
-            },
-          );
+          const day = todayKey();
+          const moves = copy.movesUsed;
+
+          setResults({
+            day,
+            moves,
+            optimalMoves: copy.optimalMoves,
+            percentile: 0,
+            distribution: [],
+            total: 0,
+            bronze: moves,
+            silver: moves,
+            gold: moves,
+          });
+          setShowResults(true);
+
+          setTimeout(async () => {
+            try {
+              await submitScore(day, moves);
+              markSubmittedToday(deviceIdRef.current);
+
+              const stats = await fetchDailyStats(day, moves);
+
+              setResults({
+                day,
+                moves,
+                optimalMoves: copy.optimalMoves,
+                percentile: stats.percentile,
+                distribution: stats.buckets,
+                total: stats.total,
+                bronze: stats.bronze,
+                silver: stats.silver,
+                gold: stats.gold,
+              });
+            } catch (e) {
+              console.error("Failed to submit score or fetch stats", e);
+              submittedRef.current = false;
+            }
+          }, 0);
         }
-        // if (copy.status === "lost") setMessage("Out of moves!");
 
         return copy;
       });
@@ -156,54 +206,91 @@ export default function App() {
   }, []);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 20,
-      }}
-    >
-      <h1>Lockle</h1>
-      <div style={{ opacity: 0.6, fontSize: 12 }}>Daily Puzzle</div>
-
-      <div
-        style={{
-          transformOrigin: "center center",
-          transform: `rotate(${rotationDeg}deg)`,
-          transition: isAnimating ? "transform 200ms ease-in-out" : "none",
-        }}
-      >
-        <GameCanvas draw={draw} width={width} height={height} />
-      </div>
-
-      {/* {isAnimating && (
-        <div style={{ marginTop: 8, opacity: 0.6 }}>Rotating…</div>
-      )} */}
-
-      {message && (
-        <div style={{ marginTop: 10, fontSize: 14, opacity: 0.85 }}>
-          {message}
+    <div className="appShell">
+      <div className="topBar">
+        <div className="brand">
+          <div className="brandTitle">LOCKLE</div>
+          <div className="brandSub">Dungeon Daily Puzzle</div>
         </div>
+
+        <div className="hud">
+          <div className="chip">
+            <span>Day</span> {todayKey()}
+          </div>
+          <div className="chip">
+            <span>Moves</span> {state.movesUsed}
+          </div>
+          <button
+            className="btn btnIcon"
+            onClick={() => setShowAbout(true)}
+            aria-label="About"
+          >
+            ?
+          </button>
+          <button className="btn btnDanger" onClick={resetGame}>
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <div className="center">
+        {/* one merged “cabinet” */}
+        <div
+          className="cabinet"
+          style={{ ["--stageSize" as any]: `${canvasSize}px` }}
+        >
+          {/* static screen frame */}
+          <div className="screenFrame">
+            {/* ONLY this rotates */}
+            <div
+              className="boardRotator"
+              style={{
+                transform: `rotate(${rotationDeg}deg)`,
+                transition: isAnimating
+                  ? "transform 200ms ease-in-out"
+                  : "none",
+              }}
+            >
+              <GameCanvas draw={draw} width={canvasSize} height={canvasSize} />
+            </div>
+          </div>
+
+          {/* control deck (merged, same card) */}
+          <div className="controlDeck">
+            <button
+              className="btn btnPrimary"
+              onClick={() => triggerRotate("CCW")}
+            >
+              ⟲ Rotate Left
+            </button>
+
+            <button
+              className="btn btnPrimary"
+              onClick={() => triggerRotate("CW")}
+            >
+              Rotate Right ⟳
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div />
+
+      {showResults && results && (
+        <ResultsModal
+          results={results}
+          onClose={() => setShowResults(false)}
+          onShare={() => shareResults(results)}
+        />
       )}
-
-      <div style={{ fontSize: 14, opacity: 0.8 }}>
-        {state.status === "won"
-          ? `Solved in ${state.movesUsed} moves. Optimal: ${state.optimalMoves} moves.`
-          : "Moves made: " + state.movesUsed}
-      </div>
-
-      <button onClick={resetGame}>Reset</button>
-      <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={() => triggerRotate("CCW")}>⟲ Left</button>
-        <button onClick={() => triggerRotate("CW")}>Right ⟳</button>
-      </div>
-
-      <div style={{ marginTop: 12, opacity: 0.8, fontSize: 14 }}>
-        Rotate: ←/A and →/D
-      </div>
+      {showAbout && (
+        <AboutModal
+          day={todayKey()}
+          state={state}
+          results={results}
+          onClose={() => setShowAbout(false)}
+        />
+      )}
     </div>
   );
 }

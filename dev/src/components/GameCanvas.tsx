@@ -24,7 +24,10 @@ export default function GameCanvas({ draw, width, height }: GameCanvasProps) {
       ref={canvasRef}
       width={width}
       height={height}
-      style={{ border: "1px solid black" }}
+      style={{
+        display: "block",
+        imageRendering: "auto",
+      }}
     />
   );
 }
