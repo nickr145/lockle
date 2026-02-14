@@ -22,7 +22,7 @@ function medalFor(moves: number, optimal: number) {
 }
 
 function shareResults(results: DailyResults) {
-  const text = `https://lockle.app Day ${results.day}
+  const text = `https://lockle.vercel.app Day ${results.day}
 ${medalFor(results.moves, results.optimalMoves)}
 ${results.moves} moves`;
 
