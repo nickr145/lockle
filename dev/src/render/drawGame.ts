@@ -2,9 +2,9 @@ import type { GameState } from "../game/types";
 
 const TILE = 80;
 
-function clamp(n: number, lo: number, hi: number) {
-  return Math.max(lo, Math.min(hi, n));
-}
+// function clamp(n: number, lo: number, hi: number) {
+//   return Math.max(lo, Math.min(hi, n));
+// }
 
 function drawVignette(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const g = ctx.createRadialGradient(

@@ -63,7 +63,7 @@ export default function App() {
 
   const [isAnimating, setIsAnimating] = useState(false);
   const [rotationDeg, setRotationDeg] = useState(0);
-  const [message, setMessage] = useState("");
+  // const [message, setMessage] = useState("");
 
   const animatingRef = useRef(false);
   const animationTimeoutRef = useRef<number | null>(null);
@@ -93,7 +93,7 @@ export default function App() {
 
     setRotationDeg(0);
     setIsAnimating(false);
-    setMessage("");
+    // setMessage("");
     setState(parseLevel(LEVEL.layout, LEVEL.optimalMoves));
   }
 
@@ -109,7 +109,7 @@ export default function App() {
     }
 
     animatingRef.current = true;
-    setMessage("");
+    // setMessage("");
     setIsAnimating(true);
     setRotationDeg(deg);
 
@@ -126,7 +126,7 @@ export default function App() {
           copy.switchesHit.size === copy.totalSwitches &&
           copy.status === "playing"
         ) {
-          setMessage("Locks released — trapdoor unlocked!");
+          // setMessage("Locks released — trapdoor unlocked!");
         }
 
         if (
