@@ -71,13 +71,19 @@ export default function App() {
   type BallAnim = {
     fromPos: { x: number; y: number };
     toPos: { x: number; y: number };
+    dist: number;
     startMs: number;
     durationMs: number;
   };
   const ballAnimRef = useRef<BallAnim | null>(null);
+  const squashAnimRef = useRef<{ startMs: number; durationMs: number } | null>(null);
   const [state, setState] = useState<GameState>(() =>
     parseLevel(LEVEL.layout, LEVEL.optimalMoves),
   );
+  // Always-current snapshot of state, safe to read in setTimeout callbacks
+  // (animatingRef prevents concurrent mutations so no stale-read risk)
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const deviceIdRef = useRef<string>(getDeviceId());
 
   useEffect(() => {
@@ -121,17 +127,34 @@ export default function App() {
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       const anim = ballAnimRef.current;
+      const squash = squashAnimRef.current;
       let ballPos: { x: number; y: number } | undefined;
+      let ballStretch = 1;
+
       if (anim) {
         const t = Math.min(1, (Date.now() - anim.startMs) / anim.durationMs);
-        const ease = t * t; // ease-in — acceleration like gravity
+        // Cubic ease-in: slow start, fast landing — physically correct gravity feel
+        const ease = t * t * t;
         ballPos = {
           x: anim.fromPos.x + (anim.toPos.x - anim.fromPos.x) * ease,
           y: anim.fromPos.y + (anim.toPos.y - anim.fromPos.y) * ease,
         };
-        if (t >= 1) ballAnimRef.current = null;
+        // Stretch proportional to instantaneous speed (derivative of t³ = 3t²)
+        const speed = 3 * t * t;
+        ballStretch = 1 + speed * anim.dist * 0.18;
+        if (t >= 1) {
+          ballAnimRef.current = null;
+          squashAnimRef.current = { startMs: Date.now(), durationMs: 200 };
+        }
+      } else if (squash) {
+        const t = (Date.now() - squash.startMs) / squash.durationMs;
+        // Squash oscillates: wide+flat immediately, springs back to normal
+        const wave = Math.sin(t * Math.PI);
+        ballStretch = 1 - wave * 0.5; // below 1 = squashed (wider than tall)
+        if (t >= 1) squashAnimRef.current = null;
       }
-      drawGame(ctx, state, ballPos);
+
+      drawGame(ctx, state, ballPos, ballStretch);
     },
     [state],
   );
@@ -141,6 +164,7 @@ export default function App() {
     animatingRef.current = false;
     submittedRef.current = false;
     ballAnimRef.current = null;
+    squashAnimRef.current = null;
 
     if (animationTimeoutRef.current !== null) {
       clearTimeout(animationTimeoutRef.current);
@@ -160,7 +184,8 @@ export default function App() {
   function triggerRotate(rot: Rotation) {
     if (animatingRef.current) return;
     if (statusRef.current !== "playing") return;
-    ballAnimRef.current = null; // interrupt any in-progress fall
+    ballAnimRef.current = null;
+    squashAnimRef.current = null;
 
     const deg = rot === "CW" ? 90 : -90;
 
@@ -176,102 +201,96 @@ export default function App() {
     animationTimeoutRef.current = window.setTimeout(() => {
       setRotationDeg(0);
 
-      const ballAnimCapture = {
-        from: null as { x: number; y: number } | null,
-        to: null as { x: number; y: number } | null,
-      };
-      setState((prev) => {
-        if (prev.status !== "playing") return prev;
-
-        const copy = structuredClone(prev);
-        const { ballAfterRotation } = stepGame(copy, rot);
-        ballAnimCapture.from = ballAfterRotation;
-        ballAnimCapture.to = { ...copy.ball };
-
-        if (
-          copy.status === "won" &&
-          !submittedRef.current &&
-          !hasSubmittedToday(deviceIdRef.current)
-        ) {
-          submittedRef.current = true;
-
-          const day = todayKey();
-          const moves = copy.movesUsed;
-          const optimalMoves = copy.optimalMoves;
-
-          const dayNumber = getDayNumber();
-
-          // Preliminary results visible during the win flash
-          setResults({
-            day,
-            dayNumber,
-            moves,
-            optimalMoves,
-            percentile: 0,
-            distribution: [],
-            total: 0,
-            gold: optimalMoves,
-            silver: optimalMoves + 1,
-            bronze: optimalMoves + 3,
-          });
-
-          // Win flash → open modal after 700 ms
-          setWinFlash(true);
-          winFlashTimeoutRef.current = window.setTimeout(() => {
-            setWinFlash(false);
-            setShowResults(true);
-          }, 700);
-
-          // Submit + fetch stats in background
-          setTimeout(async () => {
-            try {
-              await submitScore(day, moves);
-              markSubmittedToday(deviceIdRef.current);
-
-              const stats = await fetchDailyStats(day, moves, optimalMoves);
-              const newStreak = updateStreak(day);
-              setStreak(newStreak);
-
-              const fullResult = {
-                moves,
-                optimalMoves,
-                dayNumber,
-                percentile: stats.percentile,
-                distribution: stats.buckets,
-                total: stats.total,
-                bronze: stats.bronze,
-                silver: stats.silver,
-                gold: stats.gold,
-              };
-              cacheDayResult(day, fullResult);
-
-              setResults({ day, ...fullResult });
-            } catch (e) {
-              console.error("Failed to submit score or fetch stats", e);
-              submittedRef.current = false;
-            }
-          }, 0);
-        }
-
-        return copy;
-      });
-
-      // Kick off ball fall animation
-      const { from: animFrom, to: animTo } = ballAnimCapture;
-      if (animFrom && animTo) {
-        const dist =
-          Math.abs(animTo.y - animFrom.y) +
-          Math.abs(animTo.x - animFrom.x);
-        if (dist > 0) {
-          ballAnimRef.current = {
-            fromPos: animFrom,
-            toPos: animTo,
-            startMs: Date.now(),
-            durationMs: Math.min(80 + dist * 50, 400),
-          };
-        }
+      // Compute next state synchronously from stateRef — safe because
+      // animatingRef blocks any concurrent rotation during this window.
+      const prev = stateRef.current;
+      if (prev.status !== "playing") {
+        animatingRef.current = false;
+        setIsAnimating(false);
+        animationTimeoutRef.current = null;
+        return;
       }
 
+      const next = structuredClone(prev);
+      const { ballAfterRotation } = stepGame(next, rot);
+
+      // Set up fall animation before setState so the ref is ready for the
+      // first rAF tick that fires after React flushes the state update.
+      const dist =
+        Math.abs(next.ball.y - ballAfterRotation.y) +
+        Math.abs(next.ball.x - ballAfterRotation.x);
+      if (dist > 0) {
+        ballAnimRef.current = {
+          fromPos: ballAfterRotation,
+          toPos: { ...next.ball },
+          dist,
+          startMs: Date.now(),
+          durationMs: Math.min(160 + dist * 80, 520),
+        };
+      }
+
+      if (
+        next.status === "won" &&
+        !submittedRef.current &&
+        !hasSubmittedToday(deviceIdRef.current)
+      ) {
+        submittedRef.current = true;
+
+        const day = todayKey();
+        const moves = next.movesUsed;
+        const optimalMoves = next.optimalMoves;
+        const dayNumber = getDayNumber();
+
+        setResults({
+          day,
+          dayNumber,
+          moves,
+          optimalMoves,
+          percentile: 0,
+          distribution: [],
+          total: 0,
+          gold: optimalMoves,
+          silver: optimalMoves + 1,
+          bronze: optimalMoves + 3,
+        });
+
+        setWinFlash(true);
+        winFlashTimeoutRef.current = window.setTimeout(() => {
+          setWinFlash(false);
+          setShowResults(true);
+        }, 700);
+
+        setTimeout(async () => {
+          try {
+            await submitScore(day, moves);
+            markSubmittedToday(deviceIdRef.current);
+
+            const stats = await fetchDailyStats(day, moves, optimalMoves);
+            const newStreak = updateStreak(day);
+            setStreak(newStreak);
+
+            const fullResult = {
+              moves,
+              optimalMoves,
+              dayNumber,
+              percentile: stats.percentile,
+              distribution: stats.buckets,
+              total: stats.total,
+              bronze: stats.bronze,
+              silver: stats.silver,
+              gold: stats.gold,
+            };
+            cacheDayResult(day, fullResult);
+
+            setResults({ day, ...fullResult });
+          } catch (e) {
+            console.error("Failed to submit score or fetch stats", e);
+            submittedRef.current = false;
+          }
+        }, 0);
+      }
+
+      setState(next);
       animatingRef.current = false;
       setIsAnimating(false);
       animationTimeoutRef.current = null;

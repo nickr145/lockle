@@ -29,15 +29,8 @@ function drawGoldenFloor(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.fillStyle = "#a88020";
   ctx.fillRect(x, y, TILE, TILE);
 
-  const cx = x + TILE / 2;
-  const cy = y + TILE / 2;
-  const g = ctx.createRadialGradient(cx, cy, 4, cx, cy, TILE * 0.72);
-  g.addColorStop(0, "rgba(255,215,80,0.28)");
-  g.addColorStop(1, "rgba(40,16,0,0.30)");
-  ctx.fillStyle = g;
-  ctx.fillRect(x, y, TILE, TILE);
-
-  ctx.strokeStyle = "rgba(45,20,0,0.50)";
+  // Faint seam lines so adjacent tiles read as distinct without per-tile vignette
+  ctx.strokeStyle = "rgba(45,20,0,0.22)";
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, TILE - 1, TILE - 1);
 }
@@ -254,19 +247,17 @@ function drawTubePortal(
   ctx.restore();
 }
 
-function drawImp(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
+// stretch > 1: elongated vertically (falling), < 1: squashed (landing). 1 = normal.
+function drawImp(ctx: CanvasRenderingContext2D, cx: number, cy: number, stretch = 1) {
   const r = 17;
+  const sy = Math.sqrt(stretch);         // vertical scale
+  const sx = 1 / sy;                     // horizontal scale (area-preserving)
 
   ctx.save();
-  ctx.shadowColor = "#38e038";
-  ctx.shadowBlur = 30;
+  ctx.translate(cx, cy);
+  ctx.scale(sx, sy);
 
-  ctx.fillStyle = "rgba(0,18,0,0.45)";
-  ctx.beginPath();
-  ctx.ellipse(cx + 3, cy + r - 3, r * 0.88, r * 0.42, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  const g = ctx.createRadialGradient(cx - 5, cy - 8, 2, cx, cy, r + 5);
+  const g = ctx.createRadialGradient(-5, -8, 2, 0, 0, r + 5);
   g.addColorStop(0, "#c0ffc0");
   g.addColorStop(0.28, "#50dd50");
   g.addColorStop(0.70, "#1e9c1e");
@@ -274,19 +265,18 @@ function drawImp(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
 
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.shadowBlur = 0;
   ctx.strokeStyle = "rgba(0,45,0,0.55)";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.stroke();
 
   ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.beginPath();
-  ctx.arc(cx - 6, cy - 7, 5.5, 0, Math.PI * 2);
+  ctx.arc(-6, -7, 5.5, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -296,6 +286,7 @@ export function drawGame(
   ctx: CanvasRenderingContext2D,
   state: GameState,
   ballPos?: { x: number; y: number },
+  ballStretch = 1,
 ) {
   const { grid, ball } = state;
 
@@ -356,6 +347,7 @@ export function drawGame(
     ctx,
     offsetX + impX * TILE + TILE / 2,
     offsetY + impY * TILE + TILE / 2,
+    ballStretch,
   );
 
   drawVignette(ctx, w, h);

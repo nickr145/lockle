@@ -1,6 +1,7 @@
 // src/game/state.ts
 
 import type { Cell, GameState, Grid, Position, Switch, TubePair } from "./types";
+import { applyGravity } from "./gravity";
 
 export function parseLevel(level: string[], optimalMoves: number): GameState {
   const grid: Grid = [];
@@ -47,7 +48,7 @@ export function parseLevel(level: string[], optimalMoves: number): GameState {
     }
   }
 
-  return {
+  const state: GameState = {
     grid,
     ball,
     switches,
@@ -58,4 +59,9 @@ export function parseLevel(level: string[], optimalMoves: number): GameState {
     status: "playing",
     tubes,
   };
+
+  // Settle the ball to its natural resting position before gameplay begins.
+  applyGravity(state, "down");
+
+  return state;
 }
