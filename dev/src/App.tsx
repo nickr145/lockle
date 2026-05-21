@@ -4,29 +4,41 @@ import { parseLevel } from "./game/state";
 import { stepGame } from "./game/engine";
 import { drawGame } from "./render/drawGame";
 import type { GameState, Rotation, DailyResults } from "./game/types";
-import { getDailyLevel } from "./game/daily";
+import { getDailyLevel, getDayNumber } from "./game/daily";
 import { submitScore } from "./supabase";
 import { fetchDailyStats } from "./game/dailyStats";
 import ResultsModal from "./components/ResultsModal";
 import AboutModal from "./components/AboutModal";
 import { getDeviceId } from "./game/device";
+import { medalFor } from "./game/medal";
+import {
+  getStreak,
+  updateStreak,
+  cacheDayResult,
+  getCachedResult,
+} from "./game/streak";
 
 const TILE = 80;
 const LEVEL = getDailyLevel();
 
-function medalFor(moves: number, optimal: number) {
-  if (moves <= optimal) return "💎 PERFECT";
-  if (moves <= optimal + 1) return "🥇 Great";
-  if (moves <= optimal + 3) return "🥈 Good";
-  return "🥉 Okay";
-}
+function shareResults(results: DailyResults, streak: number) {
+  const medal = medalFor(results.moves, results.optimalMoves);
+  const movesStr = `${results.moves}/${results.optimalMoves} moves`;
 
-function shareResults(results: DailyResults) {
-  const text = `https://lockle.app Day ${results.day}
-${medalFor(results.moves, results.optimalMoves)}
-${results.moves} moves`;
+  const parts = [
+    `${medal.emoji} ${medal.label} ${medal.emoji}`,
+    movesStr,
+  ];
+  if (results.total > 0) parts.push(`${results.percentile}%`);
 
-  navigator.clipboard.writeText(text);
+  const lines = [
+    `Lockle #${results.dayNumber}`,
+    parts.join("  ·  "),
+  ];
+  if (streak > 1) lines.push(`🔥 ${streak}-day streak`);
+  lines.push("https://lockle.vercel.app");
+
+  navigator.clipboard.writeText(lines.join("\n"));
 }
 
 function todayKey() {
@@ -36,6 +48,7 @@ function todayKey() {
 function submittedKey(day: string, deviceId: string) {
   return `lockle_submitted_${day}_${deviceId}`;
 }
+
 function hasSubmittedToday(deviceId: string) {
   if (import.meta.env.DEV) return false;
   return localStorage.getItem(submittedKey(todayKey(), deviceId)) === "true";
@@ -49,9 +62,19 @@ export default function App() {
   const [showResults, setShowResults] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [results, setResults] = useState<DailyResults | null>(null);
+  const [streak, setStreak] = useState<number>(getStreak);
+  const [winFlash, setWinFlash] = useState(false);
 
   const submittedRef = useRef(false);
   const statusRef = useRef<GameState["status"]>("playing");
+
+  type BallAnim = {
+    fromPos: { x: number; y: number };
+    toPos: { x: number; y: number };
+    startMs: number;
+    durationMs: number;
+  };
+  const ballAnimRef = useRef<BallAnim | null>(null);
   const [state, setState] = useState<GameState>(() =>
     parseLevel(LEVEL.layout, LEVEL.optimalMoves),
   );
@@ -63,20 +86,52 @@ export default function App() {
 
   const [isAnimating, setIsAnimating] = useState(false);
   const [rotationDeg, setRotationDeg] = useState(0);
-  // const [message, setMessage] = useState("");
 
   const animatingRef = useRef(false);
   const animationTimeoutRef = useRef<number | null>(null);
+  const winFlashTimeoutRef = useRef<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   const gridW = state.grid[0].length * TILE;
   const gridH = state.grid.length * TILE;
-
-  // "diagonal" canvas so rotations never clip + frame never snaps
   const canvasSize = Math.ceil(Math.sqrt(gridW * gridW + gridH * gridH));
+
+  // Resume: restore today's result if already played (prod only)
+  useEffect(() => {
+    if (import.meta.env.DEV) return;
+    const day = todayKey();
+    const cached = getCachedResult(day);
+    if (cached) {
+      setResults({
+        day,
+        dayNumber: cached.dayNumber,
+        moves: cached.moves,
+        optimalMoves: cached.optimalMoves,
+        percentile: cached.percentile,
+        distribution: cached.distribution,
+        total: cached.total,
+        bronze: cached.bronze,
+        silver: cached.silver,
+        gold: cached.gold,
+      });
+      setTimeout(() => setShowResults(true), 300);
+    }
+  }, []);
 
   const draw = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      drawGame(ctx, state);
+      const anim = ballAnimRef.current;
+      let ballPos: { x: number; y: number } | undefined;
+      if (anim) {
+        const t = Math.min(1, (Date.now() - anim.startMs) / anim.durationMs);
+        const ease = t * t; // ease-in — acceleration like gravity
+        ballPos = {
+          x: anim.fromPos.x + (anim.toPos.x - anim.fromPos.x) * ease,
+          y: anim.fromPos.y + (anim.toPos.y - anim.fromPos.y) * ease,
+        };
+        if (t >= 1) ballAnimRef.current = null;
+      }
+      drawGame(ctx, state, ballPos);
     },
     [state],
   );
@@ -85,21 +140,27 @@ export default function App() {
     statusRef.current = "playing";
     animatingRef.current = false;
     submittedRef.current = false;
+    ballAnimRef.current = null;
 
     if (animationTimeoutRef.current !== null) {
       clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
     }
+    if (winFlashTimeoutRef.current !== null) {
+      clearTimeout(winFlashTimeoutRef.current);
+      winFlashTimeoutRef.current = null;
+    }
 
     setRotationDeg(0);
     setIsAnimating(false);
-    // setMessage("");
+    setWinFlash(false);
     setState(parseLevel(LEVEL.layout, LEVEL.optimalMoves));
   }
 
   function triggerRotate(rot: Rotation) {
     if (animatingRef.current) return;
     if (statusRef.current !== "playing") return;
+    ballAnimRef.current = null; // interrupt any in-progress fall
 
     const deg = rot === "CW" ? 90 : -90;
 
@@ -109,25 +170,23 @@ export default function App() {
     }
 
     animatingRef.current = true;
-    // setMessage("");
     setIsAnimating(true);
     setRotationDeg(deg);
 
     animationTimeoutRef.current = window.setTimeout(() => {
       setRotationDeg(0);
 
+      const ballAnimCapture = {
+        from: null as { x: number; y: number } | null,
+        to: null as { x: number; y: number } | null,
+      };
       setState((prev) => {
         if (prev.status !== "playing") return prev;
 
         const copy = structuredClone(prev);
-        stepGame(copy, rot);
-
-        if (
-          copy.switchesHit.size === copy.totalSwitches &&
-          copy.status === "playing"
-        ) {
-          // setMessage("Locks released — trapdoor unlocked!");
-        }
+        const { ballAfterRotation } = stepGame(copy, rot);
+        ballAnimCapture.from = ballAfterRotation;
+        ballAnimCapture.to = { ...copy.ball };
 
         if (
           copy.status === "won" &&
@@ -138,38 +197,55 @@ export default function App() {
 
           const day = todayKey();
           const moves = copy.movesUsed;
+          const optimalMoves = copy.optimalMoves;
 
+          const dayNumber = getDayNumber();
+
+          // Preliminary results visible during the win flash
           setResults({
             day,
+            dayNumber,
             moves,
-            optimalMoves: copy.optimalMoves,
+            optimalMoves,
             percentile: 0,
             distribution: [],
             total: 0,
-            bronze: moves,
-            silver: moves,
-            gold: moves,
+            gold: optimalMoves,
+            silver: optimalMoves + 1,
+            bronze: optimalMoves + 3,
           });
-          setShowResults(true);
 
+          // Win flash → open modal after 700 ms
+          setWinFlash(true);
+          winFlashTimeoutRef.current = window.setTimeout(() => {
+            setWinFlash(false);
+            setShowResults(true);
+          }, 700);
+
+          // Submit + fetch stats in background
           setTimeout(async () => {
             try {
               await submitScore(day, moves);
               markSubmittedToday(deviceIdRef.current);
 
-              const stats = await fetchDailyStats(day, moves);
+              const stats = await fetchDailyStats(day, moves, optimalMoves);
+              const newStreak = updateStreak(day);
+              setStreak(newStreak);
 
-              setResults({
-                day,
+              const fullResult = {
                 moves,
-                optimalMoves: copy.optimalMoves,
+                optimalMoves,
+                dayNumber,
                 percentile: stats.percentile,
                 distribution: stats.buckets,
                 total: stats.total,
                 bronze: stats.bronze,
                 silver: stats.silver,
                 gold: stats.gold,
-              });
+              };
+              cacheDayResult(day, fullResult);
+
+              setResults({ day, ...fullResult });
             } catch (e) {
               console.error("Failed to submit score or fetch stats", e);
               submittedRef.current = false;
@@ -180,10 +256,26 @@ export default function App() {
         return copy;
       });
 
+      // Kick off ball fall animation
+      const { from: animFrom, to: animTo } = ballAnimCapture;
+      if (animFrom && animTo) {
+        const dist =
+          Math.abs(animTo.y - animFrom.y) +
+          Math.abs(animTo.x - animFrom.x);
+        if (dist > 0) {
+          ballAnimRef.current = {
+            fromPos: animFrom,
+            toPos: animTo,
+            startMs: Date.now(),
+            durationMs: Math.min(80 + dist * 50, 400),
+          };
+        }
+      }
+
       animatingRef.current = false;
       setIsAnimating(false);
       animationTimeoutRef.current = null;
-    }, 200);
+    }, 240);
   }
 
   useEffect(() => {
@@ -205,6 +297,18 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < 40) return;
+    triggerRotate(dx > 0 ? "CW" : "CCW");
+  }
+
   return (
     <div className="appShell">
       <div className="topBar">
@@ -215,11 +319,17 @@ export default function App() {
 
         <div className="hud">
           <div className="chip">
-            <span>Day</span> {todayKey()}
+            <span>Day</span> {getDayNumber()}
           </div>
           <div className="chip">
             <span>Moves</span> {state.movesUsed}
           </div>
+          {state.totalSwitches > 0 && (
+            <div className="chip">
+              <span>Gears</span>{" "}
+              {state.switchesHit.size}/{state.totalSwitches}
+            </div>
+          )}
           <button
             className="btn btnIcon"
             onClick={() => setShowAbout(true)}
@@ -234,20 +344,19 @@ export default function App() {
       </div>
 
       <div className="center">
-        {/* one merged “cabinet” */}
         <div
           className="cabinet"
           style={{ ["--stageSize" as any]: `${canvasSize}px` }}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
         >
-          {/* static screen frame */}
-          <div className="screenFrame">
-            {/* ONLY this rotates */}
+          <div className={`screenFrame${winFlash ? " screenFrameWin" : ""}`}>
             <div
               className="boardRotator"
               style={{
                 transform: `rotate(${rotationDeg}deg)`,
                 transition: isAnimating
-                  ? "transform 200ms ease-in-out"
+                  ? "transform 240ms cubic-bezier(0.4,0,0.2,1)"
                   : "none",
               }}
             >
@@ -255,7 +364,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* control deck (merged, same card) */}
           <div className="controlDeck">
             <button
               className="btn btnPrimary"
@@ -279,8 +387,9 @@ export default function App() {
       {showResults && results && (
         <ResultsModal
           results={results}
+          streak={streak}
           onClose={() => setShowResults(false)}
-          onShare={() => shareResults(results)}
+          onShare={() => shareResults(results, streak)}
         />
       )}
       {showAbout && (

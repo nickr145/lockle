@@ -5,17 +5,21 @@
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
 }
 
 .modal {
-  width: min(520px, 92vw);
-  border-radius: 18px;
+  width: min(480px, 92vw);
+  border-radius: 20px;
   padding: 20px 20px 18px;
-  background: #f3e8d9;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+  background: #0d1525;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65);
+  color: rgba(255, 255, 255, 0.92);
   animation: fadeIn 0.2s ease-out;
+  max-height: 92vh;
+  overflow-y: auto;
 }
 
 .header {
@@ -27,93 +31,133 @@
 
 .title {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 800;
   letter-spacing: 0.2px;
-  color: rgba(0, 0, 0, 0.92);
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .subtitle {
-  margin-top: 4px;
-  font-size: 13px;
-  opacity: 0.65;
-  color: rgba(0, 0, 0, 0.9);
+  margin-top: 3px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .close {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  background: rgba(0, 0, 0, 0.08);
-  color: rgba(0, 0, 0, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.65);
   display: grid;
   place-items: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: background 0.12s;
 }
 
 .close:hover {
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.13);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Medal hero */
+.medalBadge {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-radius: 14px;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.medalEmoji {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.medalLabel {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+}
+
+/* Move count */
+.moveRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 14px;
 }
 
 .bigNumber {
-  margin-top: 14px;
-  font-size: 64px;
+  font-size: 60px;
   font-weight: 850;
   line-height: 1;
-  color: rgba(0, 0, 0, 0.92);
+  color: rgba(255, 255, 255, 0.95);
 }
 
+.moveMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.moveLabel {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.moveDiff {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Pills */
 .pills {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   margin-top: 12px;
 }
 
 .pill {
   flex: 1;
-  min-width: 120px;
+  min-width: 100px;
   padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.pillStreak {
+  background: rgba(251, 191, 36, 0.07);
+  border-color: rgba(251, 191, 36, 0.2);
 }
 
 .pillLabel {
-  font-size: 12px;
-  opacity: 0.65;
-  color: rgba(0, 0, 0, 0.9);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .pillValue {
   margin-top: 2px;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 800;
-  color: rgba(0, 0, 0, 0.92);
+  color: rgba(255, 255, 255, 0.92);
 }
 
-.metaRow {
-  margin-top: 10px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  opacity: 0.85;
-  color: rgba(0, 0, 0, 0.9);
-}
-
-.metaRight {
-  margin-left: auto;
-  opacity: 0.7;
-}
-
+/* Distribution card */
 .card {
   margin-top: 14px;
   border-radius: 14px;
-  padding: 12px 12px 6px;
-  background: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 12px 12px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .cardTitleRow {
@@ -121,41 +165,81 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .cardTitle {
-  font-size: 12px;
-  font-weight: 750;
-  opacity: 0.7;
-  color: rgba(0, 0, 0, 0.9);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
 }
 
 .cardHint {
-  font-size: 12px;
-  opacity: 0.55;
-  color: rgba(0, 0, 0, 0.9);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.38);
 }
 
-.percentile {
+.metaRow {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.metaRight {
+  margin-left: auto;
+}
+
+/* Countdown */
+.countdown {
   margin-top: 12px;
-  font-size: 14px;
-  opacity: 0.8;
-  color: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
+.countdownLabel {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.countdownTimer {
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Actions */
 .actions {
   display: flex;
-  gap: 12px;
-  margin-top: 18px;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .btn {
   flex: 1;
-  padding: 11px 12px;
-  border-radius: 12px;
+  padding: 12px;
+  border-radius: 13px;
   cursor: pointer;
   font-weight: 800;
+  font-size: 14px;
+  transition: filter 0.1s ease, transform 0.08s ease, background 0.2s ease;
+}
+
+.btn:active {
+  transform: scale(0.985);
 }
 
 .primary {
@@ -165,15 +249,9 @@
 }
 
 .primary:hover {
-  filter: brightness(0.96);
+  filter: brightness(1.08);
 }
 
-.secondary {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  color: rgba(0, 0, 0, 0.85);
-}
-
-.secondary:hover {
-  background: rgba(255, 255, 255, 0.85);
+.copied {
+  background: #059669;
 }

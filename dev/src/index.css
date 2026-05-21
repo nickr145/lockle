@@ -4,244 +4,195 @@ html, body, #root {
   margin: 0;
 }
 
-:root{
-  --bg0: #070a10;
-  --bg1: #0c1220;
+:root {
+  --bg0: #050e18;
+  --bg1: #040b14;
 
-  --panel: rgba(255,255,255,0.06);
-  --panel2: rgba(255,255,255,0.085);
-  --border: rgba(255,255,255,0.12);
+  --panel:  rgba(2,12,22,0.80);
+  --panel2: rgba(2,10,20,0.90);
+  --border: rgba(0,170,200,0.22);
 
-  --text: rgba(255,255,255,0.92);
-  --muted: rgba(255,255,255,0.65);
+  --text:   rgba(255,255,255,0.92);
+  --muted:  rgba(255,255,255,0.55);
 
-  --accent: #60a5fa;
+  --accent: #00c8d8;
   --danger: #fb7185;
 
-  --shadow: 0 22px 70px rgba(0,0,0,0.55);
-
-  /* stage size set from App.tsx */
-  --stage: 560px;
+  --shadow: 0 28px 80px rgba(0,0,0,0.80);
 }
 
-body{
+body {
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
 
   background:
-    radial-gradient(1400px 900px at 15% 0%, rgba(96,165,250,0.20), transparent 55%),
-    radial-gradient(900px 700px at 100% 25%, rgba(251,191,36,0.18), transparent 55%),
-    radial-gradient(900px 700px at 40% 110%, rgba(52,211,153,0.12), transparent 60%),
+    radial-gradient(1200px 800px at 50% -5%,  rgba(0,90,130,0.32), transparent 55%),
+    radial-gradient(700px  600px at 5%  90%,  rgba(0,35,60,0.22),  transparent 55%),
     linear-gradient(180deg, var(--bg0), var(--bg1));
 }
 
-/* subtle “stone noise” overlay */
-body::before{
-  content:"";
+/* Subtle dungeon grid noise */
+body::before {
+  content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.12;
+  opacity: 0.07;
   background:
-    repeating-linear-gradient(0deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 6px),
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 7px);
+    repeating-linear-gradient(0deg,  rgba(0,160,190,0.07) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, rgba(0,130,160,0.05) 0 1px, transparent 1px 6px);
   mix-blend-mode: overlay;
 }
 
-@keyframes fadeIn{
-  from{ opacity:0; transform: translateY(10px) scale(0.98); }
-  to{ opacity:1; transform: translateY(0) scale(1); }
+/* ── Animations ────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
-/* Layout shell */
-.appShell{
+@keyframes winPulse {
+  0% {
+    border-color: rgba(0,205,225,0.88);
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.95),
+      0 0 0 2px rgba(0,100,130,0.55),
+      0 0 28px rgba(0,200,225,0.55),
+      0 0 65px rgba(0,180,205,0.22),
+      inset 0 0 30px rgba(0,0,0,0.55);
+  }
+  25% {
+    border-color: rgba(80,255,100,0.95);
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.95),
+      0 0 0 4px rgba(80,255,100,0.40),
+      0 0 45px rgba(80,255,100,0.75),
+      0 0 90px rgba(60,200,80,0.30),
+      inset 0 0 30px rgba(0,0,0,0.55);
+  }
+  65% {
+    border-color: rgba(0,205,225,0.92);
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.95),
+      0 0 0 4px rgba(0,200,225,0.38),
+      0 0 45px rgba(0,200,225,0.65),
+      0 0 90px rgba(0,180,200,0.28),
+      inset 0 0 30px rgba(0,0,0,0.55);
+  }
+  100% {
+    border-color: rgba(0,205,225,0.88);
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.95),
+      0 0 0 2px rgba(0,100,130,0.55),
+      0 0 28px rgba(0,200,225,0.55),
+      0 0 65px rgba(0,180,205,0.22),
+      inset 0 0 30px rgba(0,0,0,0.55);
+  }
+}
+
+.screenFrameWin {
+  animation: winPulse 0.7s ease-out forwards;
+}
+
+/* ── Layout shell ──────────────────────────────── */
+
+.appShell {
   min-height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: 14px;
-  padding: 18px 14px 22px;
+  gap: 12px;
+  padding: 14px 14px 18px;
 }
 
-.topBar{
-  display:flex;
-  align-items:center;
+/* ── Top bar ───────────────────────────────────── */
+
+.topBar {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
-  border-radius: 18px;
+  padding: 10px 16px;
+  border-radius: 14px;
   background: var(--panel);
   border: 1px solid var(--border);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
 }
 
-.brand{
-  display:flex;
-  flex-direction:column;
-  gap: 2px;
-}
-
-.brandTitle{
-  font-weight: 950;
-  letter-spacing: 0.8px;
-  font-size: 18px;
-}
-
-.brandSub{
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.hud{
-  display:flex;
-  align-items:center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.chip{
-  display:flex;
-  align-items:center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 999px;
-  background: var(--panel2);
-  border: 1px solid var(--border);
-  font-size: 12px;
-}
-
-.chip span{
-  color: var(--muted);
-}
-
-/* Board card */
-.center{
-  display:grid;
-  place-items:center;
-  padding-top: 4px; /* moves the whole unit upward */
-}
-
-.boardCard{
-  width: min(860px, 96vw);
-  border-radius: 22px;
-  background: rgba(0,0,0,0.34);
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: var(--shadow);
-  overflow: hidden; /* makes it feel like one merged unit */
-}
-
-/* STATIC FRAME (does not rotate) */
-.boardFrame{
-  width: var(--stage);
-  height: var(--stage);
-  margin: 18px auto 0;
-  border-radius: 18px;
-  background: rgba(0,0,0,0.30);
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06),
-              0 18px 60px rgba(0,0,0,0.55);
-  overflow: hidden; /* clips any rotating corners cleanly */
-  display: grid;
-  place-items: center;
-}
-
-/* ROTATOR (only this rotates) */
-.boardRotator{
-  will-change: transform;
-  display: grid;
-  place-items: center;
-}
-
-/* Integrated bottom arcade strip */
-.arcadePanel{
-  margin-top: 16px;
-  padding: 14px 14px;
-  display:flex;
-  align-items:center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-
-  background: rgba(255,255,255,0.06);
-  border-top: 1px solid rgba(255,255,255,0.10);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-}
-
-.arcadeLeft{
-  display:flex;
+.brand {
+  display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.arcadeLabel{
-  font-size: 11px;
-  letter-spacing: 0.9px;
+.brandTitle {
   font-weight: 950;
-  opacity: 0.9;
+  font-size: 20px;
+  letter-spacing: 4px;
+  color: #f0c030;
+  text-shadow:
+    0 0 22px rgba(240,180,30,0.50),
+    1px 1px 0   rgba(0,0,0,0.75);
 }
 
-.arcadeSub{
-  font-size: 12px;
-  color: var(--muted);
+.brandSub {
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: rgba(0,185,215,0.75);
 }
 
-.controls{
-  display:flex;
-  justify-content: center;
-  gap: 12px;
+/* ── HUD chips ─────────────────────────────────── */
+
+.hud {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-/* Arcade-ish buttons */
-.btn{
-  appearance:none;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.08);
-  color: var(--text);
-  padding: 10px 12px;
-  border-radius: 14px;
-  cursor: pointer;
-  font-weight: 900;
-  letter-spacing: 0.2px;
-  transition: transform .08s ease, filter .12s ease, background .12s ease;
-  box-shadow: 0 10px 26px rgba(0,0,0,0.25);
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 800;
+  color: #f0c030;            /* amber values */
 }
 
-.btn:hover{ background: rgba(255,255,255,0.12); }
-.btn:active{ transform: scale(0.985); }
-
-.btnPrimary{
-  border: 1px solid rgba(96,165,250,0.40);
-  background: rgba(96,165,250,0.18);
+.chip span {
+  color: rgba(0,190,220,0.85);  /* teal labels */
+  font-weight: 500;
 }
 
-.btnPrimary:hover{ filter: brightness(1.06); }
+/* ── Center / board area ───────────────────────── */
 
-.btnDanger{
-  border: 1px solid rgba(251,113,133,0.38);
-  background: rgba(251,113,133,0.14);
-}
-
-/* move the whole cabinet upward a bit */
-.center{
+.center {
   display: grid;
   place-items: center;
-  padding-top: 6px;          /* smaller = higher */
+  padding-top: 4px;
 }
 
-/* single merged cabinet card */
-.cabinet{
+/* ── Cabinet ───────────────────────────────────── */
+
+.cabinet {
   width: min(900px, 96vw);
-  border-radius: 22px;
-  padding: 16px;
-  background: rgba(0,0,0,0.34);
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: var(--shadow);
+  border-radius: 20px;
+  padding: 18px 18px 14px;
+  background: linear-gradient(180deg, rgba(4,14,26,0.96), rgba(3,8,18,0.98));
+  border: 1px solid rgba(0,155,185,0.20);
+  box-shadow:
+    var(--shadow),
+    inset 0 1px 0 rgba(0,170,200,0.08);
 }
 
-/* static screen frame (THIS should not rotate) */
-.screenFrame{
+/* ── Screen frame — the Skylanders cyan glow ───── */
+
+.screenFrame {
   width: var(--stageSize);
   height: var(--stageSize);
   margin: 0 auto;
@@ -249,31 +200,57 @@ body::before{
   display: grid;
   place-items: center;
 
-  border-radius: 18px;
-  background: rgba(0,0,0,0.40);
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: 0 14px 50px rgba(0,0,0,0.55);
+  background: #040b14;
+  border: 5px solid rgba(0,205,225,0.88);
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.95),
+    0 0 0 2px rgba(0,100,130,0.55),
+    0 0 28px rgba(0,200,225,0.55),
+    0 0 65px rgba(0,180,205,0.22),
+    0 0 110px rgba(0,150,180,0.10),
+    inset 0 0 30px rgba(0,0,0,0.55);
 
-  overflow: hidden; /* hides corners cleanly */
+  overflow: hidden;
+  position: relative;
 }
 
-/* only the canvas content rotates */
-.boardRotator{
+/* Corner bolts */
+.screenFrame::before,
+.screenFrame::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: rgba(0,210,230,0.70);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(0,205,225,0.65);
+  z-index: 1;
+  pointer-events: none;
+}
+.screenFrame::before { top: 6px;  left:  6px; }
+.screenFrame::after  { top: 6px;  right: 6px; }
+
+/* ── Rotator ───────────────────────────────────── */
+
+.boardRotator {
   width: var(--stageSize);
   height: var(--stageSize);
   display: grid;
   place-items: center;
   transform-origin: center center;
+  will-change: transform;
 }
 
-/* control deck is part of the same cabinet */
-.controlDeck{
-  margin-top: 14px;
-  padding: 12px;
-  border-radius: 16px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+/* ── Control deck ──────────────────────────────── */
+
+.controlDeck {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(2,12,24,0.72);
+  border: 1px solid rgba(0,140,175,0.20);
+  box-shadow: inset 0 1px 0 rgba(0,170,200,0.07);
 
   display: flex;
   justify-content: center;
@@ -281,18 +258,62 @@ body::before{
   flex-wrap: wrap;
 }
 
-.btnIcon{
-  width: 42px;
-  height: 42px;
+/* ── Buttons ───────────────────────────────────── */
+
+.btn {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  transition: transform .08s ease, filter .12s ease, background .12s ease;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.btn:hover  { background: rgba(255,255,255,0.10); filter: brightness(1.08); }
+.btn:active { transform: scale(0.97); }
+
+.btnPrimary {
+  background: linear-gradient(180deg, rgba(0,185,215,0.18), rgba(0,120,155,0.14));
+  border: 1px solid rgba(0,200,225,0.48);
+  color: #70d8f0;
+  text-shadow: 0 0 12px rgba(0,200,220,0.40);
+  box-shadow:
+    0 6px 20px rgba(0,0,0,0.45),
+    0 0 14px rgba(0,180,210,0.14),
+    inset 0 1px 0 rgba(0,225,245,0.12);
+}
+
+.btnPrimary:hover {
+  background: linear-gradient(180deg, rgba(0,200,230,0.26), rgba(0,145,180,0.20));
+  filter: brightness(1.08);
+}
+
+.btnDanger {
+  border: 1px solid rgba(251,113,133,0.40);
+  background: rgba(251,113,133,0.10);
+  color: #fb7185;
+}
+
+.btnIcon {
+  width: 40px;
+  height: 40px;
   padding: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1;
   font-weight: 950;
-  background: rgba(255,255,255,0.06);
+  background: rgba(2,14,28,0.75);
+  border: 1px solid var(--border);
 }
-.btnIcon:hover{
-  background: rgba(255,255,255,0.10);
+
+.btnIcon:hover {
+  background: rgba(2,22,40,0.85);
 }

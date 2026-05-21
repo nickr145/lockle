@@ -29,6 +29,11 @@ export function rotateState(state: GameState, dir: Rotation) {
       x: H - 1 - sw.y,
       y: sw.x,
     }));
+
+    state.tubes = state.tubes.map(([a, b]) => [
+      { x: H - 1 - a.y, y: a.x },
+      { x: H - 1 - b.y, y: b.x },
+    ]);
   }
 
   if (dir === "CCW") {
@@ -53,6 +58,11 @@ export function rotateState(state: GameState, dir: Rotation) {
       x: sw.y,
       y: W - 1 - sw.x,
     }));
+
+    state.tubes = state.tubes.map(([a, b]) => [
+      { x: a.y, y: W - 1 - a.x },
+      { x: b.y, y: W - 1 - b.x },
+    ]);
   }
 
   state.movesUsed++;
