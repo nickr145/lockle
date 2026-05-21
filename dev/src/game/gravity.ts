@@ -14,6 +14,7 @@ export function applyGravity(state: GameState, dir: Direction): void {
 
   const { dx, dy } = DIRS[dir];
   let { x, y } = state.ball;
+  let teleported = false;
 
   while (true) {
     const nx = x + dx;
@@ -27,14 +28,29 @@ export function applyGravity(state: GameState, dir: Direction): void {
 
     // Switch activation
     const sw = state.switches.find((s) => s.x === x && s.y === y);
-    if (sw) {
-      state.switchesHit.add(sw.id);
-    }
+    if (sw) state.switchesHit.add(sw.id);
 
-    // Exit condition (exit unlocking comes later)
+    // Exit condition
     if (cell === "E" && state.switchesHit.size === state.totalSwitches) {
       state.status = "won";
       break;
+    }
+
+    // Tube teleportation — fires once per gravity call to avoid infinite loops
+    if (!teleported && state.tubes.length > 0) {
+      for (const [a, b] of state.tubes) {
+        const onA = a.x === x && a.y === y;
+        const onB = b.x === x && b.y === y;
+        if (onA || onB) {
+          const exit = onA ? b : a;
+          x = exit.x;
+          y = exit.y;
+          teleported = true;
+          const swExit = state.switches.find((s) => s.x === x && s.y === y);
+          if (swExit) state.switchesHit.add(swExit.id);
+          break;
+        }
+      }
     }
   }
 

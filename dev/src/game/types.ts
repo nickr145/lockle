@@ -25,6 +25,8 @@ export type Rotation = "CW" | "CCW";
 
 export type GameStatus = "playing" | "won"; // | "lost";
 
+export type TubePair = [Position, Position];
+
 export type GameState = {
   grid: Grid;
   ball: Position;
@@ -34,10 +36,12 @@ export type GameState = {
   movesUsed: number;
   optimalMoves: number;
   status: GameStatus;
+  tubes: TubePair[];
 };
 
 export type DailyResults = {
-  day: string;
+  day: string;       // ISO date string — used as the Supabase row key
+  dayNumber: number; // display number (days since launch)
   moves: number;
   optimalMoves: number;
   percentile: number; // 0–100

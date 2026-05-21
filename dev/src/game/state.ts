@@ -1,6 +1,7 @@
 // src/game/state.ts
 
-import type { Cell, GameState, Grid, Position, Switch } from "./types";
+import type { Cell, GameState, Grid, Position, Switch, TubePair } from "./types";
+import { applyGravity } from "./gravity";
 
 export function parseLevel(level: string[], optimalMoves: number): GameState {
   const grid: Grid = [];
@@ -9,6 +10,7 @@ export function parseLevel(level: string[], optimalMoves: number): GameState {
   let totalSwitches = 0;
   let switches: Switch[] = [];
   let switchId = 0;
+  const tubeMap = new Map<string, Position[]>();
 
   for (let y = 0; y < level.length; y++) {
     const row: Cell[] = [];
@@ -22,7 +24,11 @@ export function parseLevel(level: string[], optimalMoves: number): GameState {
       } else if (ch === "S") {
         switches.push({ id: switchId++, x, y });
         totalSwitches++;
-        row.push("."); // switches are not terrain anymore
+        row.push(".");
+      } else if (ch >= "a" && ch <= "z") {
+        if (!tubeMap.has(ch)) tubeMap.set(ch, []);
+        tubeMap.get(ch)!.push({ x, y });
+        row.push(".");
       } else if (ch === "#" || ch === "." || ch === "E") {
         row.push(ch);
       } else {
@@ -35,7 +41,14 @@ export function parseLevel(level: string[], optimalMoves: number): GameState {
 
   if (!ball) throw new Error("Level must contain exactly one ball (o)");
 
-  return {
+  const tubes: TubePair[] = [];
+  for (const positions of tubeMap.values()) {
+    if (positions.length === 2) {
+      tubes.push([positions[0], positions[1]]);
+    }
+  }
+
+  const state: GameState = {
     grid,
     ball,
     switches,
@@ -44,5 +57,11 @@ export function parseLevel(level: string[], optimalMoves: number): GameState {
     movesUsed: 0,
     optimalMoves,
     status: "playing",
+    tubes,
   };
+
+  // Settle the ball to its natural resting position before gameplay begins.
+  applyGravity(state, "down");
+
+  return state;
 }

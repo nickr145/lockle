@@ -2,254 +2,292 @@ import type { GameState } from "../game/types";
 
 const TILE = 80;
 
-// function clamp(n: number, lo: number, hi: number) {
-//   return Math.max(lo, Math.min(hi, n));
-// }
+const GEAR_COLORS = [
+  { light: "#a8e040", mid: "#7ab825", dark: "#1e3606", glow: "rgba(120,180,35,0.75)" },
+  { light: "#f04838", mid: "#cc2820", dark: "#420606", glow: "rgba(200,40,30,0.75)" },
+  { light: "#9050e0", mid: "#7030c0", dark: "#220440", glow: "rgba(110,45,190,0.75)" },
+  { light: "#40c8e0", mid: "#20a8c0", dark: "#063040", glow: "rgba(30,165,190,0.75)" },
+];
+
+const TUBE_COLORS = [
+  { ring: "#06b6d4", glow: "rgba(6,182,212,0.28)" },
+  { ring: "#d946ef", glow: "rgba(217,70,239,0.28)" },
+];
 
 function drawVignette(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const g = ctx.createRadialGradient(
-    w / 2,
-    h / 2,
-    Math.min(w, h) * 0.15,
-    w / 2,
-    h / 2,
-    Math.max(w, h) * 0.7,
+    w / 2, h / 2, Math.min(w, h) * 0.18,
+    w / 2, h / 2, Math.max(w, h) * 0.72,
   );
   g.addColorStop(0, "rgba(0,0,0,0)");
-  g.addColorStop(1, "rgba(0,0,0,0.38)");
+  g.addColorStop(1, "rgba(0,6,12,0.52)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 }
 
-function drawStoneTile(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  // base stone
-  ctx.fillStyle = "rgba(255,255,255,0.06)";
+function drawGoldenFloor(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.fillStyle = "#a88020";
   ctx.fillRect(x, y, TILE, TILE);
 
-  // subtle tile seams
-  ctx.strokeStyle = "rgba(0,0,0,0.25)";
+  // Faint seam lines so adjacent tiles read as distinct without per-tile vignette
+  ctx.strokeStyle = "rgba(45,20,0,0.22)";
+  ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, TILE - 1, TILE - 1);
-
-  // a couple "cracks"
-  ctx.strokeStyle = "rgba(0,0,0,0.18)";
-  ctx.beginPath();
-  ctx.moveTo(x + 12, y + 18);
-  ctx.lineTo(x + 30, y + 26);
-  ctx.lineTo(x + 52, y + 22);
-  ctx.stroke();
 }
 
-function drawBrickWall(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  // dark wall base
-  ctx.fillStyle = "#1c2433";
+function drawWallTile(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.fillStyle = "#0b1a26";
   ctx.fillRect(x, y, TILE, TILE);
 
-  // IMPORTANT: all bricks are drawn in LOCAL tile-space,
-  // so every wall tile has the same brick texture (no swimming)
-  const brickH = 16;
-  const brickW = 28;
-
-  // mortar color
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  // horizontal mortar lines
+  const brickH = 20;
+  const brickW = 34;
+  ctx.fillStyle = "rgba(0,18,28,0.60)";
   for (let yy = brickH; yy < TILE; yy += brickH) {
     ctx.fillRect(x, y + yy - 1, TILE, 2);
   }
-  // vertical mortar lines
   for (let yy = 0; yy < TILE; yy += brickH) {
-    for (let xx = brickW; xx < TILE; xx += brickW) {
+    const offset = ((yy / brickH) % 2) * (brickW / 2);
+    for (let xx = offset; xx < TILE + brickW; xx += brickW) {
       ctx.fillRect(x + xx - 1, y + yy + 1, 2, brickH - 2);
     }
   }
 
-  // subtle brick shading blocks (still local)
   for (let yy = 0; yy < TILE; yy += brickH) {
-    for (let xx = 0; xx < TILE; xx += brickW) {
-      ctx.fillStyle = "rgba(255,255,255,0.04)";
+    const offset = ((yy / brickH) % 2) * (brickW / 2);
+    for (let xx = offset - brickW; xx < TILE + brickW; xx += brickW) {
+      ctx.fillStyle = "rgba(0,55,75,0.10)";
       ctx.fillRect(x + xx + 2, y + yy + 2, brickW - 5, brickH - 5);
-
-      ctx.fillStyle = "rgba(0,0,0,0.12)";
-      ctx.fillRect(x + xx + 3, y + yy + brickH - 8, brickW - 7, 4);
     }
   }
 
-  // grime overlay (kept but local-ish)
-  const g = ctx.createLinearGradient(x, y, x, y + TILE);
-  g.addColorStop(0, "rgba(0,0,0,0.12)");
-  g.addColorStop(1, "rgba(0,0,0,0.38)");
-  ctx.fillStyle = g;
-  ctx.fillRect(x, y, TILE, TILE);
-
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  ctx.strokeStyle = "rgba(0,0,0,0.38)";
+  ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, TILE - 1, TILE - 1);
 }
 
-function drawLock(
+function drawGear(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
+  colorIdx: number,
   unlocked: boolean,
 ) {
-  const s = 1; // scale anchor
-  const bodyW = 22 * s;
-  const bodyH = 18 * s;
-  const shackleR = 10 * s;
+  const c = GEAR_COLORS[colorIdx % GEAR_COLORS.length];
+  const outerR = 22;
+  const innerR = 14;
+  const teeth = 8;
+  const boreR = 6;
 
-  // glow / base
   ctx.save();
   ctx.translate(cx, cy);
 
   if (unlocked) {
-    ctx.shadowColor = "rgba(52,211,153,0.55)";
-    ctx.shadowBlur = 16;
-  } else {
-    ctx.shadowColor = "rgba(251,191,36,0.35)";
-    ctx.shadowBlur = 14;
+    ctx.shadowColor = c.mid;
+    ctx.shadowBlur = 24;
   }
 
-  // shackle
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = unlocked ? "#34d399" : "#fbbf24";
   ctx.beginPath();
-
-  if (unlocked) {
-    // open shackle (tilted)
-    ctx.arc(-4, -10, shackleR, Math.PI * 0.15, Math.PI * 1.05);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(6, -18);
-    ctx.lineTo(14, -10);
-    ctx.stroke();
-  } else {
-    ctx.arc(0, -10, shackleR, Math.PI * 0.15, Math.PI * 0.85);
-    ctx.stroke();
+  for (let i = 0; i < teeth * 2; i++) {
+    const angle = (i / (teeth * 2)) * Math.PI * 2 - Math.PI / 2;
+    const r = i % 2 === 0 ? outerR : innerR;
+    const px = Math.cos(angle) * r;
+    const py = Math.sin(angle) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
   }
+  ctx.closePath();
 
-  // body
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = unlocked ? "#10b981" : "#f59e0b";
-  ctx.fillRect(-bodyW / 2, -bodyH / 2 + 4, bodyW, bodyH);
-
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.strokeRect(-bodyW / 2 + 0.5, -bodyH / 2 + 4.5, bodyW - 1, bodyH - 1);
-
-  // keyhole
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
-  ctx.beginPath();
-  ctx.arc(0, 2, 3.2, 0, Math.PI * 2);
+  ctx.fillStyle = unlocked ? c.mid : c.dark;
   ctx.fill();
+  ctx.strokeStyle = unlocked ? c.light : "rgba(255,255,255,0.10)";
+  ctx.lineWidth = unlocked ? 2 : 1;
+  ctx.stroke();
 
-  ctx.fillRect(-1.2, 2, 2.4, 6);
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.arc(0, 0, boreR, 0, Math.PI * 2);
+  ctx.fillStyle = unlocked ? "rgba(255,252,200,0.95)" : "rgba(4,8,16,0.88)";
+  ctx.fill();
+  ctx.strokeStyle = unlocked ? c.light : "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
 
   ctx.restore();
 }
 
-function drawTrapdoor(
+function drawExitPortal(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   open: boolean,
 ) {
-  const pad = 10;
+  const cx = x + TILE / 2;
+  const cy = y + TILE / 2;
+  const r = 27;
+  const t = Date.now() / 1000;
 
-  // frame
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
-  ctx.fillRect(
-    x + pad - 2,
-    y + pad - 2,
-    TILE - (pad - 2) * 2,
-    TILE - (pad - 2) * 2,
-  );
+  const ringColor = open ? "#40ff80" : "#e0a820";
+  const innerColor = open ? "rgba(64,255,128,0.50)" : "rgba(200,148,20,0.42)";
 
-  if (open) {
-    // hole
-    const g = ctx.createRadialGradient(
-      x + TILE / 2,
-      y + TILE / 2,
-      8,
-      x + TILE / 2,
-      y + TILE / 2,
-      34,
-    );
-    g.addColorStop(0, "rgba(0,0,0,0.92)");
-    g.addColorStop(1, "rgba(0,0,0,0.55)");
-    ctx.fillStyle = g;
-    ctx.fillRect(x + pad, y + pad, TILE - pad * 2, TILE - pad * 2);
+  ctx.save();
+  ctx.shadowColor = ringColor;
+  ctx.shadowBlur = open ? 30 : 14;
 
-    // rim highlight
-    ctx.strokeStyle = "rgba(255,255,255,0.14)";
-    ctx.strokeRect(
-      x + pad + 0.5,
-      y + pad + 0.5,
-      TILE - pad * 2 - 1,
-      TILE - pad * 2 - 1,
-    );
-  } else {
-    // closed wooden hatch
-    ctx.fillStyle = "#7a4b2b";
-    ctx.fillRect(x + pad, y + pad, TILE - pad * 2, TILE - pad * 2);
-
-    // planks
-    for (let i = 0; i < 4; i++) {
-      ctx.fillStyle =
-        i % 2 === 0 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
-      ctx.fillRect(x + pad, y + pad + i * 15, TILE - pad * 2, 12);
-    }
-
-    // metal hinge + lock
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.fillRect(x + pad + 6, y + pad + 6, 10, TILE - pad * 2 - 12);
-
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.fillRect(x + TILE / 2 - 6, y + TILE / 2 - 6, 12, 12);
-  }
-
-  // outer border
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.strokeRect(
-    x + pad + 0.5,
-    y + pad + 0.5,
-    TILE - pad * 2 - 1,
-    TILE - pad * 2 - 1,
-  );
-}
-
-function drawMetalBall(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
-  const r = 16;
-
-  // shadow
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
-  ctx.beginPath();
-  ctx.ellipse(cx + 4, cy + 10, r * 0.9, r * 0.55, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  const g = ctx.createRadialGradient(cx - 6, cy - 8, 4, cx, cy, r + 6);
-  g.addColorStop(0, "#f8fafc");
-  g.addColorStop(0.35, "#bfc7d1");
-  g.addColorStop(0.7, "#6b7280");
-  g.addColorStop(1, "#111827");
-
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fill();
-
-  // specular highlight
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
-  ctx.beginPath();
-  ctx.arc(cx - 6, cy - 7, 5, 0, Math.PI * 2);
-  ctx.fill();
-
-  // rim
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = ringColor;
+  ctx.lineWidth = open ? 4 : 3;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.stroke();
+
+  ctx.globalAlpha = 0.45;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.66, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+
+  const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, r - 3);
+  g.addColorStop(0, innerColor);
+  g.addColorStop(1, "rgba(0,0,0,0.74)");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(t * (open ? 2.8 : 0.55));
+  ctx.strokeStyle = ringColor;
+  ctx.lineWidth = open ? 3 : 2;
+  ctx.globalAlpha = open ? 0.75 : 0.35;
+  const arcCount = open ? 3 : 4;
+  const arcLen = open ? 0.65 : 0.38;
+  for (let i = 0; i < arcCount; i++) {
+    const start = (i / arcCount) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.42, start, start + arcLen);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+
+  if (open) {
+    ctx.fillStyle = "#80ffa0";
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("★", cx, cy);
+  } else {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.fillStyle = "#b88010";
+    ctx.fillRect(-6, -3, 12, 9);
+    ctx.strokeStyle = "#e0a820";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, -3, 5, Math.PI * 0.12, Math.PI * 0.88);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.beginPath();
+    ctx.arc(0, 1, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
 }
 
-export function drawGame(ctx: CanvasRenderingContext2D, state: GameState) {
+function drawTubePortal(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  colorIdx: number,
+) {
+  const cx = x + TILE / 2;
+  const cy = y + TILE / 2;
+  const r = 23;
+  const { ring, glow } = TUBE_COLORS[colorIdx % TUBE_COLORS.length];
+  const t = Date.now() / 1000;
+
+  ctx.save();
+
+  ctx.shadowColor = ring;
+  ctx.shadowBlur = 18;
+  ctx.strokeStyle = ring;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  const g = ctx.createRadialGradient(cx, cy, 3, cx, cy, r - 2);
+  g.addColorStop(0, glow);
+  g.addColorStop(1, "rgba(0,0,0,0.72)");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(t * 1.4);
+  ctx.strokeStyle = ring;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.55;
+  for (let i = 0; i < 5; i++) {
+    const start = (i / 5) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.52, start, start + 0.32);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+}
+
+// stretch > 1: elongated vertically (falling), < 1: squashed (landing). 1 = normal.
+function drawImp(ctx: CanvasRenderingContext2D, cx: number, cy: number, stretch = 1) {
+  const r = 17;
+  const sy = Math.sqrt(stretch);         // vertical scale
+  const sx = 1 / sy;                     // horizontal scale (area-preserving)
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(sx, sy);
+
+  const g = ctx.createRadialGradient(-5, -8, 2, 0, 0, r + 5);
+  g.addColorStop(0, "#c0ffc0");
+  g.addColorStop(0.28, "#50dd50");
+  g.addColorStop(0.70, "#1e9c1e");
+  g.addColorStop(1, "#072807");
+
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(0,45,0,0.55)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.beginPath();
+  ctx.arc(-6, -7, 5.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+export function drawGame(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  ballPos?: { x: number; y: number },
+  ballStretch = 1,
+) {
   const { grid, ball } = state;
 
   const w = ctx.canvas.width;
@@ -258,54 +296,59 @@ export function drawGame(ctx: CanvasRenderingContext2D, state: GameState) {
   const gridW = grid[0].length * TILE;
   const gridH = grid.length * TILE;
 
-  // center the actual board inside the larger canvas
   const offsetX = Math.floor((w - gridW) / 2);
   const offsetY = Math.floor((h - gridH) / 2);
 
   ctx.clearRect(0, 0, w, h);
 
-  // dungeon base (full canvas)
   const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, "#0b1220");
-  bg.addColorStop(1, "#070a12");
+  bg.addColorStop(0, "#07121a");
+  bg.addColorStop(1, "#040c14");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 
-  // draw tiles (offset)
   for (let y = 0; y < grid.length; y++) {
     for (let x = 0; x < grid[0].length; x++) {
       const cell = grid[y][x];
       const px = offsetX + x * TILE;
       const py = offsetY + y * TILE;
 
-      if (cell === "#") drawBrickWall(ctx, px, py);
-      else drawStoneTile(ctx, px, py);
+      if (cell === "#") drawWallTile(ctx, px, py);
+      else drawGoldenFloor(ctx, px, py);
 
       if (cell === "E") {
         const open = state.switchesHit.size === state.totalSwitches;
-        drawTrapdoor(ctx, px, py, open);
+        drawExitPortal(ctx, px, py, open);
       }
     }
   }
 
-  // locks (offset)
-  for (const sw of state.switches) {
+  for (let i = 0; i < state.tubes.length; i++) {
+    for (const pos of state.tubes[i]) {
+      drawTubePortal(ctx, offsetX + pos.x * TILE, offsetY + pos.y * TILE, i);
+    }
+  }
+
+  for (let i = 0; i < state.switches.length; i++) {
+    const sw = state.switches[i];
     const unlocked = state.switchesHit.has(sw.id);
-    drawLock(
+    drawGear(
       ctx,
       offsetX + sw.x * TILE + TILE / 2,
       offsetY + sw.y * TILE + TILE / 2,
+      i,
       unlocked,
     );
   }
 
-  // ball (offset)
-  drawMetalBall(
+  const impX = ballPos !== undefined ? ballPos.x : ball.x;
+  const impY = ballPos !== undefined ? ballPos.y : ball.y;
+  drawImp(
     ctx,
-    offsetX + ball.x * TILE + TILE / 2,
-    offsetY + ball.y * TILE + TILE / 2,
+    offsetX + impX * TILE + TILE / 2,
+    offsetY + impY * TILE + TILE / 2,
+    ballStretch,
   );
 
-  // vignette (full canvas)
   drawVignette(ctx, w, h);
 }
